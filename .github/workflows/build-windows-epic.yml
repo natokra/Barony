@@ -5,7 +5,8 @@ jobs:
   build:
     runs-on: windows-latest
     env:
-      VCPKG_PACKAGES: 'sdl2 sdl2-image sdl2-net sdl2-ttf openal-soft libogg libvorbis zlib libpng physfs jsoncpp rapidjson'
+      # Añadimos 'dirent' para la compatibilidad de archivos en Windows
+      VCPKG_PACKAGES: 'sdl2 sdl2-image sdl2-net sdl2-ttf openal-soft libogg libvorbis zlib libpng physfs jsoncpp rapidjson dirent'
       VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
 
     steps:
@@ -23,25 +24,32 @@ jobs:
         run: |
           vcpkg install ${{ env.VCPKG_PACKAGES }} --triplet x64-windows
 
-      - name: Patch CMakeLists (Nuke FMOD)
+      - name: Patch CMakeLists (Nuke FMOD & Fix Dirent)
         shell: pwsh
         run: |
-          # Esto es un 'sed' de PowerShell para comentar la línea que traba todo
           $path = "CMakeLists.txt"
-          (Get-Content $path) -replace 'find_package\(FMOD REQUIRED\)', '# find_package(FMOD REQUIRED)' `
-                              -replace 'find_package\(FMOD\)', '# find_package(FMOD)' | `
-          Set-Content $path
-          Write-Host "FMOD requirements have been neutralized."
+          $content = Get-Content $path
+          # Comentamos FMOD
+          $content = $content -replace 'find_package\(FMOD REQUIRED\)', '# find_package(FMOD REQUIRED)'
+          $content = $content -replace 'find_package\(FMOD\)', '# find_package(FMOD)'
+          
+          # Forzamos que encuentre el include de dirent de vcpkg si no lo hace solo
+          $content = $content -replace 'project\(barony\)', "project(barony)`ninclude_directories(`$ENV{VCPKG_INSTALLATION_ROOT}/installed/x64-windows/include)"
+          
+          $content | Set-Content $path
+          Write-Host "Patches applied: FMOD neutralized and Dirent path added."
 
       - name: Configure CMake
         run: |
           cmake -B build `
           -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" `
+          -DCMAKE_CXX_STANDARD=17 `
+          -DCMAKE_CXX_STANDARD_REQUIRED=ON `
           -DSTEAM=OFF `
           -DEGP=ON `
           -DFMOD=OFF `
-          -DUSE_FMOD=OFF `
           -DOPENAL=ON `
+          -DUSE_FMOD=OFF `
           -DUSE_OPENAL=ON `
           -DCMAKE_BUILD_TYPE=Release
 
