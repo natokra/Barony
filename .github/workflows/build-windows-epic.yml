@@ -23,6 +23,16 @@ jobs:
         run: |
           vcpkg install ${{ env.VCPKG_PACKAGES }} --triplet x64-windows
 
+      - name: Patch CMakeLists (Nuke FMOD)
+        shell: pwsh
+        run: |
+          # Esto es un 'sed' de PowerShell para comentar la línea que traba todo
+          $path = "CMakeLists.txt"
+          (Get-Content $path) -replace 'find_package\(FMOD REQUIRED\)', '# find_package(FMOD REQUIRED)' `
+                              -replace 'find_package\(FMOD\)', '# find_package(FMOD)' | `
+          Set-Content $path
+          Write-Host "FMOD requirements have been neutralized."
+
       - name: Configure CMake
         run: |
           cmake -B build `
@@ -30,8 +40,8 @@ jobs:
           -DSTEAM=OFF `
           -DEGP=ON `
           -DFMOD=OFF `
-          -DOPENAL=ON `
           -DUSE_FMOD=OFF `
+          -DOPENAL=ON `
           -DUSE_OPENAL=ON `
           -DCMAKE_BUILD_TYPE=Release
 
