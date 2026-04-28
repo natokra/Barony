@@ -23,10 +23,10 @@ jobs:
         run: |
           vcpkg install ${{ env.VCPKG_PACKAGES }} --triplet x64-windows
 
-      - name: Patch Source & CMake (Fix GetObject & FMOD)
+      - name: Patch Source & CMake
         shell: pwsh
         run: |
-          # 1. Neutralizamos FMOD en CMake
+          # 1. Neutralizamos FMOD en el CMakeLists
           $cmakePath = "CMakeLists.txt"
           (Get-Content $cmakePath) -replace 'find_package\(FMOD REQUIRED\)', '# find_package(FMOD REQUIRED)' `
                                    -replace 'find_package\(FMOD\)', '# find_package(FMOD)' | Set-Content $cmakePath
@@ -35,17 +35,21 @@ jobs:
           $vcpkgInclude = "`$ENV{VCPKG_INSTALLATION_ROOT}/installed/x64-windows/include"
           (Get-Content $cmakePath) -replace 'project\(barony\)', "project(barony)`ninclude_directories($vcpkgInclude)" | Set-Content $cmakePath
 
-          # 3. FIX CRÍTICO: Matamos la macro GetObject de Windows en el header principal
+          # 3. FIX CRÍTICO: Matamos GetObject al FINAL del header principal
           $mainHpp = "src/main.hpp"
           $undefBlock = @"
+          
+          // Fix para conflicto entre Windows y RapidJson
           #ifdef GetObject
           #undef GetObject
           #endif
-          #define WIN32_LEAN_AND_MEAN
+          #ifndef NOMINMAX
+          #define NOMINMAX
+          #endif
           "@
-          $content = Get-Content $mainHpp
-          ($undefBlock + "`n" + ($content -join "`n")) | Set-Content $mainHpp
-          Write-Host "Source patched: GetObject macro neutralized in main.hpp"
+          # Agregamos el bloque al final del archivo para que pise cualquier inclusion previa
+          Add-Content -Path $mainHpp -Value $undefBlock
+          Write-Host "Source patched: GetObject neutralized at the end of main.hpp"
 
       - name: Configure CMake
         run: |
@@ -58,7 +62,7 @@ jobs:
           -DUSE_FMOD=OFF `
           -DOPENAL=ON `
           -DCMAKE_BUILD_TYPE=Release `
-          -DCMAKE_CXX_FLAGS="/DNOMINMAX /D_CRT_SECURE_NO_WARNINGS /EHsc"
+          -DCMAKE_CXX_FLAGS="/DNOMINMAX /D_CRT_SECURE_NO_WARNINGS /DWIN32_LEAN_AND_MEAN /EHsc"
 
       - name: Build Project
         run: cmake --build build --config Release
