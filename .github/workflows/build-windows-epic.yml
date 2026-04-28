@@ -5,41 +5,35 @@ jobs:
   build:
     runs-on: windows-latest
     env:
-      # Agregamos 'glew' a la lista de dependencias
       VCPKG_PACKAGES: 'sdl2 sdl2-image sdl2-net sdl2-ttf openal-soft libogg libvorbis zlib libpng physfs jsoncpp rapidjson dirent glew'
-      VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
 
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Export GitHub Actions Cache Env
-        uses: actions/github-script@v7
+      # Setup vcpkg con cacheo automático (esto resolverá los 10 minutos de espera)
+      - name: Setup vcpkg
+        uses: lukka/run-vcpkg@v11
         with:
-          script: |
-            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
-            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+          vcpkgGitCommitId: '347209930f35905d4a98444a838f32230ee0f4c0'
+          runVcpkgInstall: true
+          vcpkgArguments: '${{ env.VCPKG_PACKAGES }}'
+          vcpkgTriplet: x64-windows
 
-      - name: Install dependencies (vcpkg)
-        run: |
-          vcpkg install ${{ env.VCPKG_PACKAGES }} --triplet x64-windows
-
-      - name: Patch CMakeLists (Final Fixes)
+      - name: Patch CMakeLists (Nuke FMOD & Fix Headers)
         shell: pwsh
         run: |
           $path = "CMakeLists.txt"
           $content = Get-Content $path
-          
-          # 1. Neutralizamos FMOD
+          # Desactivamos FMOD
           $content = $content -replace 'find_package\(FMOD REQUIRED\)', '# find_package(FMOD REQUIRED)'
           $content = $content -replace 'find_package\(FMOD\)', '# find_package(FMOD)'
           
-          # 2. Forzamos inclusión de cabeceras de vcpkg (GLEW, Dirent, etc.)
-          $vcpkgInclude = "`$ENV{VCPKG_INSTALLATION_ROOT}/installed/x64-windows/include"
+          # Inyectamos el path de headers de vcpkg
+          $vcpkgInclude = "$env:VCPKG_INSTALLATION_ROOT/installed/x64-windows/include"
           $content = $content -replace 'project\(barony\)', "project(barony)`ninclude_directories($vcpkgInclude)"
           
           $content | Set-Content $path
-          Write-Host "Patches applied: FMOD disabled and VCPKG headers linked."
 
       - name: Configure CMake
         run: |
@@ -51,12 +45,13 @@ jobs:
           -DEGP=ON `
           -DUSE_FMOD=OFF `
           -DOPENAL=ON `
-          -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_BUILD_TYPE=Release `
+          -DCMAKE_CXX_FLAGS="/DNOMINMAX /D_CRT_SECURE_NO_WARNINGS" # Fix para macros y warnings unsafe
 
       - name: Build Project
         run: cmake --build build --config Release
 
-      - name: Upload Barony 15p Executable
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: barony-15p-epic-exe
