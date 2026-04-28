@@ -9,7 +9,7 @@ jobs:
 
       - name: Install dependencies (Classic Mode)
         run: |
-          vcpkg install sdl2 sdl2-image sdl2-net sdl2-ttf openal-soft libogg libvorbis zlib libpng --triplet x64-windows
+          vcpkg install sdl2 sdl2-image sdl2-net sdl2-ttf openal-soft libogg libvorbis zlib libpng physfs jsoncpp --triplet x64-windows
 
       - name: Configure CMake
         run: |
