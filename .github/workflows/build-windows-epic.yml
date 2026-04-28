@@ -1,5 +1,5 @@
 name: Build Barony 15p (Epic Games)
-on: [push, workflow_dispatch] # Se corre al hacer push o manualmente
+on: [push, workflow_dispatch]
 
 jobs:
   build:
@@ -7,14 +7,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Vcpkg
-        uses: lukka/run-vcpkg@v11
-        with:
-          vcpkgJsonGlob: 'vcpkg.json'
-
       - name: Configure CMake
         run: |
           cmake -B build `
+          -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" `
+          -DVCPKG_MANIFEST_MODE=ON `
           -DSTEAM=OFF `
           -DEGP=ON `
           -DCMAKE_BUILD_TYPE=Release
