@@ -23,38 +23,31 @@ jobs:
         run: |
           vcpkg install ${{ env.VCPKG_PACKAGES }} --triplet x64-windows
 
-      - name: Patch Source & CMake
+      - name: Patch Source (Deep Clean)
         shell: pwsh
         run: |
+          # 1. Nuke Editor from CMakeLists (Fiabilidad 95%)
           $cmakePath = "CMakeLists.txt"
           $content = Get-Content $cmakePath
-          
-          # 1. Neutralizamos FMOD e inyectamos headers
+          $content = $content -replace 'add_subdirectory\(editor\)', '# add_subdirectory(editor)'
           $content = $content -replace 'find_package\(FMOD REQUIRED\)', '# find_package(FMOD REQUIRED)'
+          
+          # Inyectar headers de vcpkg y forzar GLEW_STATIC
           $vcpkgInclude = "`$ENV{VCPKG_INSTALLATION_ROOT}/installed/x64-windows/include"
-          $content = $content -replace 'project\(barony\)', "project(barony)`ninclude_directories($vcpkgInclude)"
+          $content = $content -replace 'project\(barony\)', "project(barony)`ninclude_directories($vcpkgInclude)`nadd_definitions(-DGLEW_STATIC)"
           $content | Set-Content $cmakePath
 
-          # 2. FIX C2512: Parcheamos la estructura StatusEffectQueue_t
-          # Buscamos dónde está definida (probablemente en GameUI.hpp o similar)
-          $uiHeader = "src/ui/GameUI.hpp"
-          if (Test-Path $uiHeader) {
+          # 2. Fix C2512 StatusEffectQueue_t (Fiabilidad 75% - Disclaimer: Depende de la ruta exacta)
+          # Buscamos el archivo en todo el src
+          $uiHeader = Get-ChildItem -Path "src" -Filter "GameUI.hpp" -Recurse | Select-Object -ExpandProperty FullName
+          if ($uiHeader) {
               (Get-Content $uiHeader) -replace 'struct StatusEffectQueue_t \{', 'struct StatusEffectQueue_t { StatusEffectQueue_t() = default;' | Set-Content $uiHeader
-              Write-Host "Patch applied to StatusEffectQueue_t in GameUI.hpp"
+              Write-Host "Patched $uiHeader"
           }
 
-          # 3. FIX GetObject: Al final del header principal
+          # 3. Nuke GetObject (Fiabilidad 90%)
           $mainHpp = "src/main.hpp"
-          $undefBlock = @"
-          #ifdef GetObject
-          #undef GetObject
-          #endif
-          #ifndef NOMINMAX
-          #define NOMINMAX
-          #endif
-          "@
-          Add-Content -Path $mainHpp -Value $undefBlock
-          Write-Host "GetObject neutralized."
+          Add-Content -Path $mainHpp -Value "`n#ifdef GetObject`n#undef GetObject`n#endif`n#define NOMINMAX"
 
       - name: Configure CMake
         run: |
@@ -67,14 +60,13 @@ jobs:
           -DUSE_FMOD=OFF `
           -DOPENAL=ON `
           -DBUILD_EDITOR=OFF `
-          -DEDITOR=OFF `
           -DCMAKE_BUILD_TYPE=Release `
           -DCMAKE_CXX_FLAGS="/DNOMINMAX /D_CRT_SECURE_NO_WARNINGS /DWIN32_LEAN_AND_MEAN /EHsc /DGLEW_STATIC"
 
       - name: Build Project
-        run: cmake --build build --config Release
+        run: cmake --build build --config Release --target barony
 
-      - name: Upload Barony 15p Executable
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: barony-15p-epic-exe
