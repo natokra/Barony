@@ -1,0 +1,29 @@
+name: Build Barony 15p (Epic Games)
+on: [push, workflow_dispatch] # Se corre al hacer push o manualmente
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Vcpkg
+        uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgJsonGlob: 'vcpkg.json'
+
+      - name: Configure CMake
+        run: |
+          cmake -B build `
+          -DSTEAM=OFF `
+          -DEGP=ON `
+          -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build --config Release
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: barony-15p-epic-exe
+          path: build/Release/barony.exe
