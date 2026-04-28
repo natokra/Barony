@@ -7,11 +7,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install dependencies (Classic Mode)
+        run: |
+          vcpkg install sdl2 sdl2-image sdl2-net sdl2-ttf openal-soft libogg libvorbis zlib libpng --triplet x64-windows
+
       - name: Configure CMake
         run: |
           cmake -B build `
           -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" `
-          -DVCPKG_MANIFEST_MODE=ON `
           -DSTEAM=OFF `
           -DEGP=ON `
           -DCMAKE_BUILD_TYPE=Release
