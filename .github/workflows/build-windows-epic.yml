@@ -5,8 +5,8 @@ jobs:
   build:
     runs-on: windows-latest
     env:
-      # Añadimos 'dirent' para la compatibilidad de archivos en Windows
-      VCPKG_PACKAGES: 'sdl2 sdl2-image sdl2-net sdl2-ttf openal-soft libogg libvorbis zlib libpng physfs jsoncpp rapidjson dirent'
+      # Agregamos 'glew' a la lista de dependencias
+      VCPKG_PACKAGES: 'sdl2 sdl2-image sdl2-net sdl2-ttf openal-soft libogg libvorbis zlib libpng physfs jsoncpp rapidjson dirent glew'
       VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
 
     steps:
@@ -24,20 +24,22 @@ jobs:
         run: |
           vcpkg install ${{ env.VCPKG_PACKAGES }} --triplet x64-windows
 
-      - name: Patch CMakeLists (Nuke FMOD & Fix Dirent)
+      - name: Patch CMakeLists (Final Fixes)
         shell: pwsh
         run: |
           $path = "CMakeLists.txt"
           $content = Get-Content $path
-          # Comentamos FMOD
+          
+          # 1. Neutralizamos FMOD
           $content = $content -replace 'find_package\(FMOD REQUIRED\)', '# find_package(FMOD REQUIRED)'
           $content = $content -replace 'find_package\(FMOD\)', '# find_package(FMOD)'
           
-          # Forzamos que encuentre el include de dirent de vcpkg si no lo hace solo
-          $content = $content -replace 'project\(barony\)', "project(barony)`ninclude_directories(`$ENV{VCPKG_INSTALLATION_ROOT}/installed/x64-windows/include)"
+          # 2. Forzamos inclusión de cabeceras de vcpkg (GLEW, Dirent, etc.)
+          $vcpkgInclude = "`$ENV{VCPKG_INSTALLATION_ROOT}/installed/x64-windows/include"
+          $content = $content -replace 'project\(barony\)', "project(barony)`ninclude_directories($vcpkgInclude)"
           
           $content | Set-Content $path
-          Write-Host "Patches applied: FMOD neutralized and Dirent path added."
+          Write-Host "Patches applied: FMOD disabled and VCPKG headers linked."
 
       - name: Configure CMake
         run: |
@@ -47,10 +49,8 @@ jobs:
           -DCMAKE_CXX_STANDARD_REQUIRED=ON `
           -DSTEAM=OFF `
           -DEGP=ON `
-          -DFMOD=OFF `
-          -DOPENAL=ON `
           -DUSE_FMOD=OFF `
-          -DUSE_OPENAL=ON `
+          -DOPENAL=ON `
           -DCMAKE_BUILD_TYPE=Release
 
       - name: Build Project
