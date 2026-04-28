@@ -5,9 +5,7 @@ jobs:
   build:
     runs-on: windows-latest
     env:
-      # Lista de dependencias necesarias identificadas
       VCPKG_PACKAGES: 'sdl2 sdl2-image sdl2-net sdl2-ttf openal-soft libogg libvorbis zlib libpng physfs jsoncpp rapidjson dirent glew'
-      # Intentamos mantener el cache binario activo
       VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
 
     steps:
@@ -25,22 +23,29 @@ jobs:
         run: |
           vcpkg install ${{ env.VCPKG_PACKAGES }} --triplet x64-windows
 
-      - name: Patch CMakeLists (Final Fixes)
+      - name: Patch Source & CMake (Fix GetObject & FMOD)
         shell: pwsh
         run: |
-          $path = "CMakeLists.txt"
-          $content = Get-Content $path
+          # 1. Neutralizamos FMOD en CMake
+          $cmakePath = "CMakeLists.txt"
+          (Get-Content $cmakePath) -replace 'find_package\(FMOD REQUIRED\)', '# find_package(FMOD REQUIRED)' `
+                                   -replace 'find_package\(FMOD\)', '# find_package(FMOD)' | Set-Content $cmakePath
           
-          # 1. Neutralizamos FMOD (evitamos error de configuración)
-          $content = $content -replace 'find_package\(FMOD REQUIRED\)', '# find_package(FMOD REQUIRED)'
-          $content = $content -replace 'find_package\(FMOD\)', '# find_package(FMOD)'
-          
-          # 2. Forzamos inclusión de cabeceras de vcpkg (GLEW, Dirent, etc.)
+          # 2. Inyectamos headers de vcpkg
           $vcpkgInclude = "`$ENV{VCPKG_INSTALLATION_ROOT}/installed/x64-windows/include"
-          $content = $content -replace 'project\(barony\)', "project(barony)`ninclude_directories($vcpkgInclude)"
-          
-          $content | Set-Content $path
-          Write-Host "Patches applied: FMOD disabled and VCPKG headers linked."
+          (Get-Content $cmakePath) -replace 'project\(barony\)', "project(barony)`ninclude_directories($vcpkgInclude)" | Set-Content $cmakePath
+
+          # 3. FIX CRÍTICO: Matamos la macro GetObject de Windows en el header principal
+          $mainHpp = "src/main.hpp"
+          $undefBlock = @"
+          #ifdef GetObject
+          #undef GetObject
+          #endif
+          #define WIN32_LEAN_AND_MEAN
+          "@
+          $content = Get-Content $mainHpp
+          ($undefBlock + "`n" + ($content -join "`n")) | Set-Content $mainHpp
+          Write-Host "Source patched: GetObject macro neutralized in main.hpp"
 
       - name: Configure CMake
         run: |
@@ -53,7 +58,7 @@ jobs:
           -DUSE_FMOD=OFF `
           -DOPENAL=ON `
           -DCMAKE_BUILD_TYPE=Release `
-          -DCMAKE_CXX_FLAGS="/DNOMINMAX /D_CRT_SECURE_NO_WARNINGS /DGetObject=GetObject"
+          -DCMAKE_CXX_FLAGS="/DNOMINMAX /D_CRT_SECURE_NO_WARNINGS /EHsc"
 
       - name: Build Project
         run: cmake --build build --config Release
