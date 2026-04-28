@@ -1,0 +1,16 @@
+{
+  "name": "barony",
+  "version-string": "4.2.3",
+  "builtin-baseline": "347209930f35905d4a98444a838f32230ee0f4c0",
+  "dependencies": [
+    "sdl2",
+    "sdl2-image",
+    "sdl2-net",
+    "sdl2-ttf",
+    "openal-soft",
+    "libogg",
+    "libvorbis",
+    "zlib",
+    "libpng"
+  ]
+}
