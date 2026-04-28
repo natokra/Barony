@@ -23,31 +23,31 @@ jobs:
         run: |
           vcpkg install ${{ env.VCPKG_PACKAGES }} --triplet x64-windows
 
-      - name: Patch Source (Deep Clean)
+      - name: Heavy Patching (Source & CMake)
         shell: pwsh
         run: |
-          # 1. Nuke Editor from CMakeLists (Fiabilidad 95%)
+          # 1. Neutralizar FMOD y forzar GLEW_STATIC en CMakeLists
           $cmakePath = "CMakeLists.txt"
           $content = Get-Content $cmakePath
-          $content = $content -replace 'add_subdirectory\(editor\)', '# add_subdirectory(editor)'
           $content = $content -replace 'find_package\(FMOD REQUIRED\)', '# find_package(FMOD REQUIRED)'
-          
-          # Inyectar headers de vcpkg y forzar GLEW_STATIC
+          $content = $content -replace 'add_subdirectory\(editor\)', '# Editor disabled'
           $vcpkgInclude = "`$ENV{VCPKG_INSTALLATION_ROOT}/installed/x64-windows/include"
-          $content = $content -replace 'project\(barony\)', "project(barony)`ninclude_directories($vcpkgInclude)`nadd_definitions(-DGLEW_STATIC)"
+          $content = $content -replace 'project\(barony\)', "project(barony)`ninclude_directories($vcpkgInclude)`nadd_definitions(-DGLEW_STATIC -DNOMINMAX)"
           $content | Set-Content $cmakePath
 
-          # 2. Fix C2512 StatusEffectQueue_t (Fiabilidad 75% - Disclaimer: Depende de la ruta exacta)
-          # Buscamos el archivo en todo el src
-          $uiHeader = Get-ChildItem -Path "src" -Filter "GameUI.hpp" -Recurse | Select-Object -ExpandProperty FullName
-          if ($uiHeader) {
-              (Get-Content $uiHeader) -replace 'struct StatusEffectQueue_t \{', 'struct StatusEffectQueue_t { StatusEffectQueue_t() = default;' | Set-Content $uiHeader
-              Write-Host "Patched $uiHeader"
+          # 2. Fix C2512 StatusEffectQueue_t (Búsqueda agresiva)
+          # Buscamos en todo el directorio src el archivo que define la estructura
+          Get-ChildItem -Path "src" -Filter "*.hpp" -Recurse | ForEach-Object {
+              $fileContent = Get-Content $_.FullName
+              if ($fileContent -match "struct StatusEffectQueue_t") {
+                  Write-Host "Patching StatusEffectQueue_t in $($_.FullName)"
+                  $fileContent -replace 'struct StatusEffectQueue_t \{', 'struct StatusEffectQueue_t { StatusEffectQueue_t() {}' | Set-Content $_.FullName
+              }
           }
 
-          # 3. Nuke GetObject (Fiabilidad 90%)
+          # 3. Nuke GetObject en main.hpp
           $mainHpp = "src/main.hpp"
-          Add-Content -Path $mainHpp -Value "`n#ifdef GetObject`n#undef GetObject`n#endif`n#define NOMINMAX"
+          Add-Content -Path $mainHpp -Value "`n#ifdef GetObject`n#undef GetObject`n#endif"
 
       - name: Configure CMake
         run: |
