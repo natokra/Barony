@@ -26,20 +26,26 @@ jobs:
       - name: Patch Source & CMake
         shell: pwsh
         run: |
-          # 1. Neutralizamos FMOD en el CMakeLists
           $cmakePath = "CMakeLists.txt"
-          (Get-Content $cmakePath) -replace 'find_package\(FMOD REQUIRED\)', '# find_package(FMOD REQUIRED)' `
-                                   -replace 'find_package\(FMOD\)', '# find_package(FMOD)' | Set-Content $cmakePath
+          $content = Get-Content $cmakePath
           
-          # 2. Inyectamos headers de vcpkg
+          # 1. Neutralizamos FMOD e inyectamos headers
+          $content = $content -replace 'find_package\(FMOD REQUIRED\)', '# find_package(FMOD REQUIRED)'
           $vcpkgInclude = "`$ENV{VCPKG_INSTALLATION_ROOT}/installed/x64-windows/include"
-          (Get-Content $cmakePath) -replace 'project\(barony\)', "project(barony)`ninclude_directories($vcpkgInclude)" | Set-Content $cmakePath
+          $content = $content -replace 'project\(barony\)', "project(barony)`ninclude_directories($vcpkgInclude)"
+          $content | Set-Content $cmakePath
 
-          # 3. FIX CRÍTICO: Matamos GetObject al FINAL del header principal
+          # 2. FIX C2512: Parcheamos la estructura StatusEffectQueue_t
+          # Buscamos dónde está definida (probablemente en GameUI.hpp o similar)
+          $uiHeader = "src/ui/GameUI.hpp"
+          if (Test-Path $uiHeader) {
+              (Get-Content $uiHeader) -replace 'struct StatusEffectQueue_t \{', 'struct StatusEffectQueue_t { StatusEffectQueue_t() = default;' | Set-Content $uiHeader
+              Write-Host "Patch applied to StatusEffectQueue_t in GameUI.hpp"
+          }
+
+          # 3. FIX GetObject: Al final del header principal
           $mainHpp = "src/main.hpp"
           $undefBlock = @"
-          
-          // Fix para conflicto entre Windows y RapidJson
           #ifdef GetObject
           #undef GetObject
           #endif
@@ -47,9 +53,8 @@ jobs:
           #define NOMINMAX
           #endif
           "@
-          # Agregamos el bloque al final del archivo para que pise cualquier inclusion previa
           Add-Content -Path $mainHpp -Value $undefBlock
-          Write-Host "Source patched: GetObject neutralized at the end of main.hpp"
+          Write-Host "GetObject neutralized."
 
       - name: Configure CMake
         run: |
@@ -61,8 +66,10 @@ jobs:
           -DEGP=ON `
           -DUSE_FMOD=OFF `
           -DOPENAL=ON `
+          -DBUILD_EDITOR=OFF `
+          -DEDITOR=OFF `
           -DCMAKE_BUILD_TYPE=Release `
-          -DCMAKE_CXX_FLAGS="/DNOMINMAX /D_CRT_SECURE_NO_WARNINGS /DWIN32_LEAN_AND_MEAN /EHsc"
+          -DCMAKE_CXX_FLAGS="/DNOMINMAX /D_CRT_SECURE_NO_WARNINGS /DWIN32_LEAN_AND_MEAN /EHsc /DGLEW_STATIC"
 
       - name: Build Project
         run: cmake --build build --config Release
