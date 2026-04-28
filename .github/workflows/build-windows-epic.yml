@@ -5,9 +5,7 @@ jobs:
   build:
     runs-on: windows-latest
     env:
-      # Lista completa de dependencias necesarias para el motor de Barony
       VCPKG_PACKAGES: 'sdl2 sdl2-image sdl2-net sdl2-ttf openal-soft libogg libvorbis zlib libpng physfs jsoncpp rapidjson'
-      # Configuración del cache binario de vcpkg para GitHub Actions
       VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
 
     steps:
@@ -31,9 +29,10 @@ jobs:
           -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" `
           -DSTEAM=OFF `
           -DEGP=ON `
-          -DUSE_FMOD=OFF `
-          -DUSE_CURL=OFF `
+          -DFMOD=OFF `
           -DOPENAL=ON `
+          -DUSE_FMOD=OFF `
+          -DUSE_OPENAL=ON `
           -DCMAKE_BUILD_TYPE=Release
 
       - name: Build Project
