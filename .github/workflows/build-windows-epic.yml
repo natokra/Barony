@@ -5,6 +5,7 @@ jobs:
   build:
     runs-on: windows-latest
     env:
+      # Cambiamos a triplet x86 para evitar truncación de punteros
       VCPKG_PACKAGES: 'sdl2 sdl2-image sdl2-net sdl2-ttf openal-soft libogg libvorbis zlib libpng physfs jsoncpp rapidjson dirent glew'
       VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
 
@@ -19,49 +20,46 @@ jobs:
             core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
             core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
 
-      - name: Install dependencies (vcpkg)
+      - name: Install dependencies (vcpkg x86)
         run: |
-          vcpkg install ${{ env.VCPKG_PACKAGES }} --triplet x64-windows
+          vcpkg install ${{ env.VCPKG_PACKAGES }} --triplet x86-windows
 
       - name: Heavy Patching (Source & CMake)
         shell: pwsh
         run: |
-          # 1. Neutralizar FMOD y forzar GLEW_STATIC en CMakeLists
+          # 1. Neutralizar FMOD e inyectar paths
           $cmakePath = "CMakeLists.txt"
           $content = Get-Content $cmakePath
           $content = $content -replace 'find_package\(FMOD REQUIRED\)', '# find_package(FMOD REQUIRED)'
           $content = $content -replace 'add_subdirectory\(editor\)', '# Editor disabled'
-          $vcpkgInclude = "`$ENV{VCPKG_INSTALLATION_ROOT}/installed/x64-windows/include"
-          $content = $content -replace 'project\(barony\)', "project(barony)`ninclude_directories($vcpkgInclude)`nadd_definitions(-DGLEW_STATIC -DNOMINMAX)"
+          # Ajustamos path a x86
+          $vcpkgInclude = "`$ENV{VCPKG_INSTALLATION_ROOT}/installed/x86-windows/include"
+          $content = $content -replace 'project\(barony\)', "project(barony)`ninclude_directories($vcpkgInclude)`nadd_definitions(-DNOMINMAX)"
           $content | Set-Content $cmakePath
 
-          # 2. Fix C2512 StatusEffectQueue_t (Búsqueda agresiva)
-          # Buscamos en todo el directorio src el archivo que define la estructura
+          # 2. Fix C2512 StatusEffectQueue_t (Regex flexible)
           Get-ChildItem -Path "src" -Filter "*.hpp" -Recurse | ForEach-Object {
               $fileContent = Get-Content $_.FullName
               if ($fileContent -match "struct StatusEffectQueue_t") {
                   Write-Host "Patching StatusEffectQueue_t in $($_.FullName)"
-                  $fileContent -replace 'struct StatusEffectQueue_t \{', 'struct StatusEffectQueue_t { StatusEffectQueue_t() {}' | Set-Content $_.FullName
+                  $fileContent -replace 'struct StatusEffectQueue_t\s*\{', 'struct StatusEffectQueue_t { StatusEffectQueue_t() = default;' | Set-Content $_.FullName
               }
           }
 
-          # 3. Nuke GetObject en main.hpp
-          $mainHpp = "src/main.hpp"
-          Add-Content -Path $mainHpp -Value "`n#ifdef GetObject`n#undef GetObject`n#endif"
+          # 3. Nuke GetObject al final de main.hpp
+          Add-Content -Path "src/main.hpp" -Value "`n#ifdef GetObject`n#undef GetObject`n#endif"
 
-      - name: Configure CMake
+      - name: Configure CMake (Win32)
         run: |
-          cmake -B build `
+          cmake -B build -A Win32 `
           -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" `
+          -DVCPKG_TARGET_TRIPLET=x86-windows `
           -DCMAKE_CXX_STANDARD=17 `
-          -DCMAKE_CXX_STANDARD_REQUIRED=ON `
           -DSTEAM=OFF `
           -DEGP=ON `
           -DUSE_FMOD=OFF `
-          -DOPENAL=ON `
-          -DBUILD_EDITOR=OFF `
           -DCMAKE_BUILD_TYPE=Release `
-          -DCMAKE_CXX_FLAGS="/DNOMINMAX /D_CRT_SECURE_NO_WARNINGS /DWIN32_LEAN_AND_MEAN /EHsc /DGLEW_STATIC"
+          -DCMAKE_CXX_FLAGS="/DNOMINMAX /D_CRT_SECURE_NO_WARNINGS /DWIN32_LEAN_AND_MEAN /EHsc"
 
       - name: Build Project
         run: cmake --build build --config Release --target barony
