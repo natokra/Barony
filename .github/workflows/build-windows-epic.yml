@@ -1,4 +1,4 @@
-name: Build Barony 15p (Epic Games + Online FINAL)
+name: Build Barony 15p (Epic Games x64 FINAL)
 on: [push, workflow_dispatch]
 
 jobs:
@@ -12,39 +12,36 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Install dependencies (vcpkg x86)
-        run: vcpkg install ${{ env.VCPKG_PACKAGES }} --triplet x86-windows
+      - name: Install dependencies (vcpkg x64)
+        run: vcpkg install ${{ env.VCPKG_PACKAGES }} --triplet x64-windows
 
-      - name: Surgical Patching (Full EOS & Linker Integration)
+      - name: Surgical Patching (x64 EOS Integration)
         shell: pwsh
         run: |
           $vcpkgRoot = $env:VCPKG_INSTALLATION_ROOT.Replace('\', '/')
-          $vcpkgInclude = "$vcpkgRoot/installed/x86-windows/include"
-          $vcpkgLib = "$vcpkgRoot/installed/x86-windows/lib"
+          $vcpkgInclude = "$vcpkgRoot/installed/x64-windows/include"
+          $vcpkgLib = "$vcpkgRoot/installed/x64-windows/lib"
           
-          # Paths absolutos al SDK de Epic que subiste
+          # Notar el cambio a Win64 en el nombre de la lib
           $eosInclude = "$pwd/deps/eos/include".Replace('\', '/')
-          $eosLib = "$pwd/deps/eos/lib/EOSSDK-Win32-Shipping.lib".Replace('\', '/')
+          $eosLib = "$pwd/deps/eos/lib/EOSSDK-Win64-Shipping.lib".Replace('\', '/')
           
           $cmakePath = "CMakeLists.txt"
           $content = Get-Content $cmakePath
           
-          # 1. Desactivar FMOD y Editor
           $content = $content -replace '(?i)find_package\s*\(\s*FMOD', '# FMOD OFF'
           $content = $content -replace '(?i)add_subdirectory\s*\(\s*editor', '# Editor OFF'
           
-          # 2. Inyectar directorios de inclusión y Macros de EOS
-          $content = $content -replace 'project\(barony\)', "project(barony)`ninclude_directories(`"$vcpkgInclude`")`ninclude_directories(`"$eosInclude`")`nadd_definitions(-DNOMINMAX -D_CRT_SECURE_NO_WARNINGS -DWIN32 -DEGP -DUSE_EOS)"
+          # Inyectamos macros x64 y EOS
+          $content = $content -replace 'project\(barony\)', "project(barony)`ninclude_directories(`"$vcpkgInclude`")`ninclude_directories(`"$eosInclude`")`nadd_definitions(-DNOMINMAX -D_CRT_SECURE_NO_WARNINGS -DWIN64 -DEGP -DUSE_EOS)"
           
-          # 3. Configuración del Linker
           $glewLibFile = Get-ChildItem -Path "$vcpkgLib/glew32*.lib" | Select-Object -First 1 -ExpandProperty Name
           $libs = "`"$vcpkgLib/$glewLibFile`" `"$eosLib`" `"$vcpkgLib/physfs.lib`" `"$vcpkgLib/SDL2.lib`" `"$vcpkgLib/SDL2_image.lib`" `"$vcpkgLib/SDL2_net.lib`" `"$vcpkgLib/SDL2_ttf.lib`" `"$vcpkgLib/jsoncpp.lib`" Opengl32.lib Glu32.lib Advapi32.lib User32.lib Gdi32.lib Shell32.lib Ole32.lib Ws2_32.lib"
           
           $content = $content -replace 'target_link_libraries\(barony', "target_link_libraries(barony $libs "
-          
           $content | Set-Content $cmakePath
 
-          # 4. Parches de código fuente
+          # Parches de código
           Get-ChildItem -Path "src" -Filter "*.hpp" -Recurse | ForEach-Object {
               $txt = [IO.File]::ReadAllText($_.FullName)
               if ($txt -match "struct\s+StatusEffectQueue_t") {
@@ -54,23 +51,22 @@ jobs:
           }
           Add-Content -Path "src/main.hpp" -Value "`n#ifdef GetObject`n#undef GetObject`n#endif"
 
-      - name: Configure CMake (Win32 + EOS Enabled)
-        run: cmake -B build -A Win32 -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" -DVCPKG_TARGET_TRIPLET=x86-windows -DCMAKE_CXX_STANDARD=17 -DSTEAM=OFF -DEGP=ON -DUSE_EOS=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS="/DNOMINMAX /D_CRT_SECURE_NO_WARNINGS /DWIN32 /EHsc"
+      - name: Configure CMake (x64)
+        run: cmake -B build -A x64 -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" -DVCPKG_TARGET_TRIPLET=x64-windows -DCMAKE_CXX_STANDARD=17 -DSTEAM=OFF -DEGP=ON -DUSE_EOS=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS="/DNOMINMAX /D_CRT_SECURE_NO_WARNINGS /DWIN64 /EHsc"
 
       - name: Build Project
         run: cmake --build build --config Release --target barony
 
-      - name: Collect Suite (Exe + All DLLs)
+      - name: Collect Suite (x64)
         shell: pwsh
         run: |
-          $binDir = "$env:VCPKG_INSTALLATION_ROOT/installed/x86-windows/bin"
+          $binDir = "$env:VCPKG_INSTALLATION_ROOT/installed/x64-windows/bin"
           $outDir = "build/Release"
           Copy-Item "$binDir/*.dll" -Destination $outDir -Force
-          # Buscamos la DLL de Epic en cualquier subcarpeta de deps
-          Get-ChildItem -Path "deps" -Filter "EOSSDK-Win32-Shipping.dll" -Recurse | Copy-Item -Destination $outDir -Force
+          Get-ChildItem -Path "deps" -Filter "EOSSDK-Win64-Shipping.dll" -Recurse | Copy-Item -Destination $outDir -Force
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: barony-15p-FINAL-ONLINE
+          name: barony-15p-x64-ONLINE
           path: build/Release/
