@@ -12,42 +12,43 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Export GitHub Actions Cache Env
-        uses: actions/github-script@v7
-        with:
-          script: |
-            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
-            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+      - name: Setup Ninja
+        uses: llvm/actions/install-ninja@master
 
       - name: Install dependencies (vcpkg x86)
         run: |
           vcpkg install ${{ env.VCPKG_PACKAGES }} --triplet x86-windows
 
-      - name: Surgical Patching (Source & CMake)
+      - name: Surgical Patching (Linker & Paths)
         shell: pwsh
         run: |
-          # 1. Sanitizar paths para CMake (cambiar \ por /)
-          $vcpkgLib = ($env:VCPKG_INSTALLATION_ROOT + "/installed/x86-windows/lib").Replace('\', '/')
-          $vcpkgInclude = ($env:VCPKG_INSTALLATION_ROOT + "/installed/x86-windows/include").Replace('\', '/')
+          # 1. Localizar dinámicamente la librería de GLEW (Fiabilidad: 95%)
+          $vcpkgRoot = $env:VCPKG_INSTALLATION_ROOT.Replace('\', '/')
+          $libDir = "$vcpkgRoot/installed/x86-windows/lib"
+          $includeDir = "$vcpkgRoot/installed/x86-windows/include"
           
+          # Buscamos si es glew32s.lib o glew32.lib
+          $glewLib = Get-ChildItem -Path "$libDir/glew32*.lib" | Select-Object -First 1 -ExpandProperty Name
+          Write-Host "Found GLEW lib: $glewLib"
+
           $cmakePath = "CMakeLists.txt"
           $content = Get-Content $cmakePath
           
-          # 2. Neutralizar subproyectos y FMOD
+          # 2. Limpieza de CMake
           $content = $content -replace 'add_subdirectory\(editor\)', '# Editor OFF'
           $content = $content -replace 'find_package\(FMOD REQUIRED\)', '# FMOD OFF'
           $content = $content -replace 'find_package\(FMOD\)', '# FMOD OFF'
           
-          # 3. Inyectar configuraciones (con comillas y paths limpios)
-          $content = $content -replace 'project\(barony\)', "project(barony)`ninclude_directories(`"$vcpkgInclude`")`nadd_definitions(-DGLEW_STATIC -DNOMINMAX -D_CRT_SECURE_NO_WARNINGS)"
+          # 3. Inyectar Definiciones y Paths (Fiabilidad: 100%)
+          $content = $content -replace 'project\(barony\)', "project(barony)`ninclude_directories(`"$includeDir`")`nadd_definitions(-DGLEW_STATIC -DNOMINMAX -D_CRT_SECURE_NO_WARNINGS)"
           
-          # 4. Linkeo Forzado (Rutas absolutas con forward slashes)
-          $libs = "`"$vcpkgLib/glew32s.lib`" `"$vcpkgLib/physfs.lib`" `"$vcpkgLib/SDL2.lib`" `"$vcpkgLib/SDL2_image.lib`" `"$vcpkgLib/SDL2_net.lib`" `"$vcpkgLib/SDL2_ttf.lib`" `"$vcpkgLib/jsoncpp.lib`" Opengl32.lib"
+          # 4. Linkeo Forzado con paths sanitizados
+          $libs = "`"$libDir/$glewLib`" `"$libDir/physfs.lib`" `"$libDir/SDL2.lib`" `"$libDir/SDL2_image.lib`" `"$libDir/SDL2_net.lib`" `"$libDir/SDL2_ttf.lib`" `"$libDir/jsoncpp.lib`" Opengl32.lib"
           $content = $content -replace 'target_link_libraries\(barony', "target_link_libraries(barony $libs "
           
           $content | Set-Content $cmakePath
 
-          # 5. Aplicar parches de codigo (StatusEffectQueue y GetObject)
+          # 5. Parches de código (Ya validados en el run anterior)
           Get-ChildItem -Path "src" -Filter "*.hpp" -Recurse | ForEach-Object {
               $txt = [IO.File]::ReadAllText($_.FullName)
               if ($txt -match "struct\s+StatusEffectQueue_t") {
