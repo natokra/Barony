@@ -12,7 +12,7 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # --- ACTIVACIÓN DE CACHE (Ahorra 10 mins desde la 2da ejecución) ---
+      # --- ESTO ES LO QUE AHORRA LOS 10 MINUTOS (A partir del 2do run) ---
       - name: Export GitHub Actions Cache Env
         uses: actions/github-script@v7
         with:
@@ -47,7 +47,7 @@ jobs:
           
           $eosMacros = "-DPRODUCT_ID=\`"$eProdID\`" -DSANDBOX_ID=\`"$eSandID\`" -DDEPLOYMENT_ID=\`"$eDeplID\`" -DCLIENT_ID=\`"$eClieID\`""
           
-          # 1. Limpieza y Nuke
+          # 1. Limpieza de flags de Linux y Nuke FMOD/Editor
           $content = $content -replace '-lm', ''
           $content = $content -replace '-lc', ''
           $content = $content -replace '(?i)find_package\s*\(\s*FMOD', '# FMOD OFF'
@@ -62,7 +62,7 @@ jobs:
           $content = $content -replace 'target_link_libraries\(barony', "target_link_libraries(barony $libs "
           $content | Set-Content $cmakePath
 
-          # 4. Parches de código
+          # 4. Parches de código (libpng, lambdas, status)
           if (Test-Path "src/savepng.cpp") {
               $pngTxt = [IO.File]::ReadAllText("src/savepng.cpp")
               $pngTxt = $pngTxt -replace 'png_set_rows\(png_ptr, info_ptr, row_pointers\)', 'png_set_rows(png_ptr, info_ptr, (png_bytepp)row_pointers)'
@@ -86,8 +86,8 @@ jobs:
           Add-Content -Path "src/main.hpp" -Value "`n#include <inttypes.h>`n#ifdef GetObject`n#undef GetObject`n#endif`n#ifdef ERROR`n#undef ERROR`n#endif"
 
       - name: Configure CMake (x64 Hardcoded + ENV FIXES)
-        # Seteamos todas las variables de entorno de Barony para que deje de tirar errores de validación
-        run: cmake -B build -A x64 -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" -DVCPKG_TARGET_TRIPLET=x64-windows -DCMAKE_CXX_STANDARD=17 -DSTEAM=OFF -DEGP=ON -DUSE_EOS=ON -DEOS_ENABLED=ON -DBUILD_ENV_PR=1 -DBUILD_ENV_SA=1 -DBUILD_ENV_DE=1 -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS="/DNOMINMAX /D_CRT_SECURE_NO_WARNINGS /DWIN64 /EHsc /D__STDC_FORMAT_MACROS /wd4311 /wd4312 /wd4573 /wd4805"
+        # Seteamos todas las variables de entorno para que CMake deje de chillar
+        run: cmake -B build -A x64 -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" -DVCPKG_TARGET_TRIPLET=x64-windows -DCMAKE_CXX_STANDARD=17 -DSTEAM=OFF -DEGP=ON -DUSE_EOS=ON -DEOS_ENABLED=ON -DBUILD_ENV_PR=1 -DBUILD_ENV_SA=1 -DBUILD_ENV_DE=1 -DBUILD_ENV_CC=1 -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS="/DNOMINMAX /D_CRT_SECURE_NO_WARNINGS /DWIN64 /EHsc /D__STDC_FORMAT_MACROS /wd4311 /wd4312 /wd4573 /wd4805"
 
       - name: Build Project
         run: cmake --build build --config Release --target barony
@@ -103,5 +103,5 @@ jobs:
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: barony-15p-x64-HARDCODED
+          name: barony-15p-x64-ONLINE
           path: build/Release/
