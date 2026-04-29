@@ -1,4 +1,4 @@
-name: Build Barony 15p (Epic Games x64 FINAL OPTIMIZED)
+name: Build Barony 15p (Epic Games x64 TOTAL FIX)
 on: [push, workflow_dispatch]
 
 jobs:
@@ -12,7 +12,7 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # HABILITA EL CACHE DE VCPKG (Ahorra 10 mins en subsiguientes runs)
+      # --- ACTIVACIÓN DE CACHE (Ahorra 10 mins desde la 2da ejecución) ---
       - name: Export GitHub Actions Cache Env
         uses: actions/github-script@v7
         with:
@@ -20,7 +20,7 @@ jobs:
             core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
             core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
 
-      - name: Install dependencies (vcpkg x64 con Cache)
+      - name: Install dependencies (vcpkg x64)
         run: vcpkg install ${{ env.VCPKG_PACKAGES }} --triplet x64-windows
 
       - name: Surgical Patching (x64 + EOS Credentials FIX)
@@ -39,12 +39,13 @@ jobs:
           $cmakePath = "CMakeLists.txt"
           $content = Get-Content $cmakePath
           
-          # IDs de Epic Games Store
-          $eosProdID = "38276f7f6f4d4127929424c803027b40"
-          $eosSandID = "899732f74136450992383842c1630132"
-          $eosDeplID = "39f3796d19ca447285ec43764835848e"
-          $eosClieID = "xyza78912q6mHnd5O1TjL2H9YmD83W4v"
-          $eosMacros = "-DPRODUCT_ID=\`"$eosProdID\`" -DSANDBOX_ID=\`"$eosSandID\`" -DDEPLOYMENT_ID=\`"$eosDeplID\`" -DCLIENT_ID=\`"$eosClieID\`""
+          # IDs de Epic Games Store (Variables seguras)
+          $eProdID = "38276f7f6f4d4127929424c803027b40"
+          $eSandID = "899732f74136450992383842c1630132"
+          $eDeplID = "39f3796d19ca447285ec43764835848e"
+          $eClieID = "xyza78912q6mHnd5O1TjL2H9YmD83W4v"
+          
+          $eosMacros = "-DPRODUCT_ID=\`"$eProdID\`" -DSANDBOX_ID=\`"$eSandID\`" -DDEPLOYMENT_ID=\`"$eDeplID\`" -DCLIENT_ID=\`"$eClieID\`""
           
           # 1. Limpieza y Nuke
           $content = $content -replace '-lm', ''
@@ -52,7 +53,7 @@ jobs:
           $content = $content -replace '(?i)find_package\s*\(\s*FMOD', '# FMOD OFF'
           $content = $content -replace '(?i)add_subdirectory\s*\(\s*editor', '# Editor OFF'
           
-          # 2. Inyección de Headers y Macros de Identidad
+          # 2. Inyección de Headers y Macros
           $content = $content -replace 'project\(barony\)', "project(barony)`ninclude_directories(`"$vcpkgInclude`")`ninclude_directories(`"$eosInclude`")`nadd_definitions(-DNOMINMAX -D_CRT_SECURE_NO_WARNINGS -DWIN64 -DEGP -DUSE_EOS -D__STDC_FORMAT_MACROS $eosMacros)"
           
           # 3. Linkeo
@@ -84,9 +85,9 @@ jobs:
           }
           Add-Content -Path "src/main.hpp" -Value "`n#include <inttypes.h>`n#ifdef GetObject`n#undef GetObject`n#endif`n#ifdef ERROR`n#undef ERROR`n#endif"
 
-      - name: Configure CMake (x64 Hardcoded + ENV Fixes)
-        # Agregado BUILD_ENV_PR=1 y BUILD_ENV_SA=1 para evitar errores de validación de CMake
-        run: cmake -B build -A x64 -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" -DVCPKG_TARGET_TRIPLET=x64-windows -DCMAKE_CXX_STANDARD=17 -DSTEAM=OFF -DEGP=ON -DUSE_EOS=ON -DEOS_ENABLED=ON -DBUILD_ENV_PR=1 -DBUILD_ENV_SA=1 -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS="/DNOMINMAX /D_CRT_SECURE_NO_WARNINGS /DWIN64 /EHsc /D__STDC_FORMAT_MACROS /wd4311 /wd4312 /wd4573 /wd4805"
+      - name: Configure CMake (x64 Hardcoded + ENV FIXES)
+        # Seteamos todas las variables de entorno de Barony para que deje de tirar errores de validación
+        run: cmake -B build -A x64 -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" -DVCPKG_TARGET_TRIPLET=x64-windows -DCMAKE_CXX_STANDARD=17 -DSTEAM=OFF -DEGP=ON -DUSE_EOS=ON -DEOS_ENABLED=ON -DBUILD_ENV_PR=1 -DBUILD_ENV_SA=1 -DBUILD_ENV_DE=1 -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS="/DNOMINMAX /D_CRT_SECURE_NO_WARNINGS /DWIN64 /EHsc /D__STDC_FORMAT_MACROS /wd4311 /wd4312 /wd4573 /wd4805"
 
       - name: Build Project
         run: cmake --build build --config Release --target barony
@@ -102,5 +103,5 @@ jobs:
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: barony-15p-x64-ONLINE
+          name: barony-15p-x64-HARDCODED
           path: build/Release/
