@@ -12,42 +12,36 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # Eliminamos la acción de LLVM que falló. Ninja ya está en el PATH de Windows.
-
       - name: Install dependencies (vcpkg x86)
         run: |
           vcpkg install ${{ env.VCPKG_PACKAGES }} --triplet x86-windows
 
-      - name: Surgical Patching (Linker & Paths)
+      - name: Surgical Patching (Linker & Clean CMake)
         shell: pwsh
         run: |
-          # 1. Localizar la ruta real de vcpkg en este runner (Fiabilidad 100%)
           $vcpkgRoot = $env:VCPKG_INSTALLATION_ROOT.Replace('\', '/')
           $libDir = "$vcpkgRoot/installed/x86-windows/lib"
           $includeDir = "$vcpkgRoot/installed/x86-windows/include"
           
-          # 2. Identificar el nombre exacto de la lib de GLEW
-          $glewFile = Get-ChildItem -Path "$libDir/glew32*.lib" | Select-Object -First 1 -ExpandProperty Name
-          Write-Host "Linker will use: $libDir/$glewFile"
-
           $cmakePath = "CMakeLists.txt"
           $content = Get-Content $cmakePath
           
-          # 3. Limpieza y Desactivación de Módulos
+          # 1. Limpieza de subproyectos
           $content = $content -replace 'add_subdirectory\(editor\)', '# Editor OFF'
           $content = $content -replace 'find_package\(FMOD REQUIRED\)', '# FMOD OFF'
           $content = $content -replace 'find_package\(FMOD\)', '# FMOD OFF'
           
-          # 4. Inyectar Paths y Definiciones (Fiabilidad 95%)
-          $content = $content -replace 'project\(barony\)', "project(barony)`ninclude_directories(`"$includeDir`")`nadd_definitions(-DGLEW_STATIC -DNOMINMAX -D_CRT_SECURE_NO_WARNINGS)"
+          # 2. Inyectar Paths SIN GLEW_STATIC (Usaremos DLL linking)
+          $content = $content -replace 'project\(barony\)', "project(barony)`ninclude_directories(`"$includeDir`")`nadd_definitions(-DNOMINMAX -D_CRT_SECURE_NO_WARNINGS -DWIN32)"
           
-          # 5. Linkeo Forzado con rutas relativas al Runner
-          $libs = "`"$libDir/$glewFile`" `"$libDir/physfs.lib`" `"$libDir/SDL2.lib`" `"$libDir/SDL2_image.lib`" `"$libDir/SDL2_net.lib`" `"$libDir/SDL2_ttf.lib`" `"$libDir/jsoncpp.lib`" Opengl32.lib"
+          # 3. Enlace Dinámico Forzado
+          # Usamos glew32.lib (Import lib) en lugar de glew32s.lib (Static)
+          $libs = "glew32.lib physfs.lib SDL2.lib SDL2_image.lib SDL2_net.lib SDL2_ttf.lib jsoncpp.lib Opengl32.lib Glu32.lib Shell32.lib Advapi32.lib"
           $content = $content -replace 'target_link_libraries\(barony', "target_link_libraries(barony $libs "
           
           $content | Set-Content $cmakePath
 
-          # 6. Parches de código (Confirmado que funcionan)
+          # 4. Parches de código (Fiabilidad 100% - Ya compilaron)
           Get-ChildItem -Path "src" -Filter "*.hpp" -Recurse | ForEach-Object {
               $txt = [IO.File]::ReadAllText($_.FullName)
               if ($txt -match "struct\s+StatusEffectQueue_t") {
@@ -57,7 +51,7 @@ jobs:
           }
           Add-Content -Path "src/main.hpp" -Value "`n#ifdef GetObject`n#undef GetObject`n#endif"
 
-      - name: Configure CMake (Win32)
+      - name: Configure CMake (Win32 Dynamic)
         run: |
           cmake -B build -A Win32 `
           -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" `
@@ -67,7 +61,7 @@ jobs:
           -DEGP=ON `
           -DUSE_FMOD=OFF `
           -DCMAKE_BUILD_TYPE=Release `
-          -DCMAKE_CXX_FLAGS="/DNOMINMAX /D_CRT_SECURE_NO_WARNINGS /DWIN32_LEAN_AND_MEAN /EHsc /DGLEW_STATIC"
+          -DCMAKE_CXX_FLAGS="/DNOMINMAX /D_CRT_SECURE_NO_WARNINGS /DWIN32_LEAN_AND_MEAN /EHsc"
 
       - name: Build Project
         run: cmake --build build --config Release --target barony
