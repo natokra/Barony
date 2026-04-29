@@ -153,7 +153,6 @@ set(FMOD_ENABLED OFF)
 set(OPENAL_ENABLED ON)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
 set(CMAKE_OSX_ARCHITECTURES x86_64)
-
 set (Windows 1)
 cmake_policy(SET CMP0072 NEW)
 
@@ -164,30 +163,4 @@ find_package(SDL2_net REQUIRED)
 find_package(SDL2_ttf REQUIRED)
 find_package(PhysFS REQUIRED)
 find_package(RapidJson REQUIRED)
-include_directories(${RAPID_JSON_INCLUDE_DIR})
-
-include_directories(${SDL2_INCLUDE_DIRS} ${PHYSFS_INCLUDE_DIR})
-find_package(OpenAL REQUIRED)
-find_package(OGGVORBIS REQUIRED)
-include_directories(${OPENAL_INCLUDE_DIR} ${OGG_INCLUDE_DIR} ${VORBIS_INCLUDE_DIR})
-
-set(IMGUI 1)
-find_package(Threads REQUIRED)
-find_package(PNG REQUIRED)
-include_directories(${PNG_INCLUDE_DIR})
-
-if(EOS_ENABLED)
-  find_package(EOS REQUIRED)
-  include_directories(${EOS_INCLUDE_DIR})
-endif()
-
-configure_file ( "${PROJECT_SOURCE_DIR}/src/Config.hpp.in" "${PROJECT_SOURCE_DIR}/src/Config.hpp")
-add_subdirectory(src)
-
-if (GAME_ENABLED)
-	add_executable(barony ${GAME_SOURCES} "${CMAKE_CURRENT_SOURCE_DIR}/barony.rc")
-	target_link_libraries(barony ${SDL2_LIBRARIES} ${SDL2_IMAGE_LIBRARIES} ${SDL2_NET_LIBRARIES} ${SDL2_TTF_LIBRARIES} ${OPENAL_LIBRARY} ${VORBISFILE_LIBRARY} ${OGG_LIBRARY} ${PHYSFS_LIBRARY} ${PNG_LIBRARY} ${OPENGL_LIBRARIES} ${THREADS_LIBRARIES} wsock32 ws2_32)
-	if (EOS_ENABLED)
-		target_link_libraries(barony ${EOS_LIBRARIES})
-	endif()
-endif()
+include_directories(${RAPID_JSON
