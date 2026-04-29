@@ -12,7 +12,7 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # --- ESTO ES LO QUE AHORRA LOS 10 MINUTOS (A partir del 2do run) ---
+      # --- OPTIMIZACIÓN DE CACHE (Ahorra 10 mins desde la 2da ejecución) ---
       - name: Export GitHub Actions Cache Env
         uses: actions/github-script@v7
         with:
@@ -39,7 +39,7 @@ jobs:
           $cmakePath = "CMakeLists.txt"
           $content = Get-Content $cmakePath
           
-          # IDs de Epic Games Store (Variables seguras)
+          # IDs de Epic Games Store (Hardcoded)
           $eProdID = "38276f7f6f4d4127929424c803027b40"
           $eSandID = "899732f74136450992383842c1630132"
           $eDeplID = "39f3796d19ca447285ec43764835848e"
@@ -47,13 +47,13 @@ jobs:
           
           $eosMacros = "-DPRODUCT_ID=\`"$eProdID\`" -DSANDBOX_ID=\`"$eSandID\`" -DDEPLOYMENT_ID=\`"$eDeplID\`" -DCLIENT_ID=\`"$eClieID\`""
           
-          # 1. Limpieza de flags de Linux y Nuke FMOD/Editor
+          # 1. Limpieza de flags y Nuke FMOD/Editor
           $content = $content -replace '-lm', ''
           $content = $content -replace '-lc', ''
           $content = $content -replace '(?i)find_package\s*\(\s*FMOD', '# FMOD OFF'
           $content = $content -replace '(?i)add_subdirectory\s*\(\s*editor', '# Editor OFF'
           
-          # 2. Inyección de Headers y Macros
+          # 2. Inyección de Headers y Macros de Identidad
           $content = $content -replace 'project\(barony\)', "project(barony)`ninclude_directories(`"$vcpkgInclude`")`ninclude_directories(`"$eosInclude`")`nadd_definitions(-DNOMINMAX -D_CRT_SECURE_NO_WARNINGS -DWIN64 -DEGP -DUSE_EOS -D__STDC_FORMAT_MACROS $eosMacros)"
           
           # 3. Linkeo
@@ -62,7 +62,7 @@ jobs:
           $content = $content -replace 'target_link_libraries\(barony', "target_link_libraries(barony $libs "
           $content | Set-Content $cmakePath
 
-          # 4. Parches de código (libpng, lambdas, status)
+          # 4. Parches de código (savepng, lambdas, status queue)
           if (Test-Path "src/savepng.cpp") {
               $pngTxt = [IO.File]::ReadAllText("src/savepng.cpp")
               $pngTxt = $pngTxt -replace 'png_set_rows\(png_ptr, info_ptr, row_pointers\)', 'png_set_rows(png_ptr, info_ptr, (png_bytepp)row_pointers)'
@@ -86,8 +86,8 @@ jobs:
           Add-Content -Path "src/main.hpp" -Value "`n#include <inttypes.h>`n#ifdef GetObject`n#undef GetObject`n#endif`n#ifdef ERROR`n#undef ERROR`n#endif"
 
       - name: Configure CMake (x64 Hardcoded + ENV FIXES)
-        # Seteamos todas las variables de entorno para que CMake deje de chillar
-        run: cmake -B build -A x64 -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" -DVCPKG_TARGET_TRIPLET=x64-windows -DCMAKE_CXX_STANDARD=17 -DSTEAM=OFF -DEGP=ON -DUSE_EOS=ON -DEOS_ENABLED=ON -DBUILD_ENV_PR=1 -DBUILD_ENV_SA=1 -DBUILD_ENV_DE=1 -DBUILD_ENV_CC=1 -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS="/DNOMINMAX /D_CRT_SECURE_NO_WARNINGS /DWIN64 /EHsc /D__STDC_FORMAT_MACROS /wd4311 /wd4312 /wd4573 /wd4805"
+        # Seteamos todas las variables de entorno acumuladas (PR, SA, DE, CC, CS, CI)
+        run: cmake -B build -A x64 -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" -DVCPKG_TARGET_TRIPLET=x64-windows -DCMAKE_CXX_STANDARD=17 -DSTEAM=OFF -DEGP=ON -DUSE_EOS=ON -DEOS_ENABLED=ON -DBUILD_ENV_PR=1 -DBUILD_ENV_SA=1 -DBUILD_ENV_DE=1 -DBUILD_ENV_CC=1 -DBUILD_ENV_CS=1 -DBUILD_ENV_CI=1 -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS="/DNOMINMAX /D_CRT_SECURE_NO_WARNINGS /DWIN64 /EHsc /D__STDC_FORMAT_MACROS /wd4311 /wd4312 /wd4573 /wd4805"
 
       - name: Build Project
         run: cmake --build build --config Release --target barony
