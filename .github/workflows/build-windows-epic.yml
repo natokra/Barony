@@ -1,4 +1,4 @@
-name: Build Barony 15p (Epic Games + Online Fix)
+name: Build Barony 15p (Epic Games + Online FIXED)
 on: [push, workflow_dispatch]
 
 jobs:
@@ -6,54 +6,43 @@ jobs:
     runs-on: windows-latest
     env:
       VCPKG_PACKAGES: 'sdl2 sdl2-image sdl2-net sdl2-ttf openal-soft libogg libvorbis zlib libpng physfs jsoncpp rapidjson dirent glew'
-      VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
 
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Install dependencies (vcpkg x86)
-        run: |
-          vcpkg install ${{ env.VCPKG_PACKAGES }} --triplet x86-windows
+      - name: Install dependencies
+        run: vcpkg install ${{ env.VCPKG_PACKAGES }} --triplet x86-windows
 
-      - name: Surgical Patching (Brute Force EOS & GLEW)
+      - name: Surgical Patching (EOS Integration)
         shell: pwsh
         run: |
           $vcpkgRoot = $env:VCPKG_INSTALLATION_ROOT.Replace('\', '/')
-          $libDir = "$vcpkgRoot/installed/x86-windows/lib"
-          $includeDir = "$vcpkgRoot/installed/x86-windows/include"
+          $vcpkgInclude = "$vcpkgRoot/installed/x86-windows/include"
+          $vcpkgLib = "$vcpkgRoot/installed/x86-windows/lib"
           
-          # 1. Identificar la lib de GLEW
-          $glewLib = Get-ChildItem -Path "$libDir/glew32*.lib" | Select-Object -First 1 -ExpandProperty Name
+          # Paths al SDK de Epic que subiste al repo
+          $eosInclude = "$pwd/deps/eos/include".Replace('\', '/')
+          $eosLib = "$pwd/deps/eos/lib/EOSSDK-Win32-Shipping.lib".Replace('\', '/')
           
           $cmakePath = "CMakeLists.txt"
           $content = Get-Content $cmakePath
           
-          # 2. NUKE FMOD & Editor (Regex agresivo para evitar el error de la linea 403)
-          $content = $content -replace '(?i)find_package\s*\(\s*FMOD', '# find_package(FMOD'
+          # 1. Nuke FMOD & Editor
+          $content = $content -replace '(?i)find_package\s*\(\s*FMOD', '# FMOD OFF'
           $content = $content -replace '(?i)add_subdirectory\s*\(\s*editor', '# Editor OFF'
           
-          # 3. FORZAR EOS/EGP: Inyectamos las macros directo al inicio del proyecto
-          # Esto evita que el código ignore el botón "Online"
-          $content = $content -replace 'project\(barony\)', "project(barony)`ninclude_directories(`"$includeDir`")`nadd_definitions(-DNOMINMAX -D_CRT_SECURE_NO_WARNINGS -DWIN32 -DEGP -DUSE_EOS -D_CRT_NONSTDC_NO_DEPRECATE)"
+          # 2. Inyectar Paths de EOS y Macros de Red
+          $content = $content -replace 'project\(barony\)', "project(barony)`ninclude_directories(`"$vcpkgInclude`")`ninclude_directories(`"$eosInclude`")`nadd_definitions(-DNOMINMAX -D_CRT_SECURE_NO_WARNINGS -DWIN32 -DEGP -DUSE_EOS)"
           
-          # 4. LINKEO MANUAL (Volvemos a rutas absolutas)
-          # Agregamos librerías de Windows necesarias para EOS (Advapi32, User32, etc.)
-          $libs = "`"$libDir/$glewLib`" `"$libDir/physfs.lib`" `"$libDir/SDL2.lib`" `"$libDir/SDL2_image.lib`" `"$libDir/SDL2_net.lib`" `"$libDir/SDL2_ttf.lib`" `"$libDir/jsoncpp.lib`" Opengl32.lib Glu32.lib Advapi32.lib User32.lib Gdi32.lib Shell32.lib"
-          
-          # Intentamos buscar la lib de Epic en el repo para linkearla manualmente
-          $eosLibPath = Get-ChildItem -Path "." -Filter "EOSSDK-Win32-Shipping.lib" -Recurse | Select-Object -First 1 -ExpandProperty FullName
-          if ($eosLibPath) {
-              $eosLibPath = $eosLibPath.Replace('\', '/')
-              Write-Host "Found Epic SDK Lib: $eosLibPath"
-              $libs += " `"$eosLibPath`""
-          }
-          
+          # 3. Linkeo Forzado (GLEW + EOS + System Libs)
+          $glewLibFile = Get-ChildItem -Path "$vcpkgLib/glew32*.lib" | Select-Object -First 1 -ExpandProperty Name
+          $libs = "`"$vcpkgLib/$glewLibFile`" `"$eosLib`" `"$vcpkgLib/physfs.lib`" `"$vcpkgLib/SDL2.lib`" `"$vcpkgLib/SDL2_image.lib`" `"$vcpkgLib/SDL2_net.lib`" `"$vcpkgLib/SDL2_ttf.lib`" `"$vcpkgLib/jsoncpp.lib`" Opengl32.lib Glu32.lib Advapi32.lib User32.lib Gdi32.lib Shell32.lib"
           $content = $content -replace 'target_link_libraries\(barony', "target_link_libraries(barony $libs "
           
           $content | Set-Content $cmakePath
 
-          # 5. Parches de código (StatusEffectQueue y GetObject)
+          # 4. Parches de código (StatusEffectQueue)
           Get-ChildItem -Path "src" -Filter "*.hpp" -Recurse | ForEach-Object {
               $txt = [IO.File]::ReadAllText($_.FullName)
               if ($txt -match "struct\s+StatusEffectQueue_t") {
@@ -63,7 +52,7 @@ jobs:
           }
           Add-Content -Path "src/main.hpp" -Value "`n#ifdef GetObject`n#undef GetObject`n#endif"
 
-      - name: Configure CMake (Win32 Force)
+      - name: Configure CMake
         run: |
           cmake -B build -A Win32 `
           -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" `
@@ -84,10 +73,13 @@ jobs:
           $binDir = "$env:VCPKG_INSTALLATION_ROOT/installed/x86-windows/bin"
           $outDir = "build/Release"
           Copy-Item "$binDir/*.dll" -Destination $outDir -Force
-          Get-ChildItem -Path "." -Filter "EOSSDK-Win32-Shipping.dll" -Recurse | Copy-Item -Destination $outDir -Force
+          # Subimos la DLL de Epic para que ya la tengas en el pack
+          if (Test-Path "deps/eos/bin/EOSSDK-Win32-Shipping.dll") {
+              Copy-Item "deps/eos/bin/EOSSDK-Win32-Shipping.dll" -Destination $outDir -Force
+          }
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: barony-15p-online-fixed
+          name: barony-15p-FINAL-ONLINE
           path: build/Release/
