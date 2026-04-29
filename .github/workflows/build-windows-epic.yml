@@ -1,4 +1,4 @@
-name: Build Barony 15p (Epic Games x64 HARDCODED)
+name: Build Barony 15p (Epic Games x64 HARDCODED FINAL)
 on: [push, workflow_dispatch]
 
 jobs:
@@ -15,7 +15,7 @@ jobs:
       - name: Install dependencies (vcpkg x64)
         run: vcpkg install ${{ env.VCPKG_PACKAGES }} --triplet x64-windows
 
-      - name: Surgical Patching (x64 + EOS Credentials Injected)
+      - name: Surgical Patching (x64 + EOS Credentials FIX)
         shell: pwsh
         run: |
           $vcpkgRoot = $env:VCPKG_INSTALLATION_ROOT.Replace('\', '/')
@@ -31,13 +31,13 @@ jobs:
           $cmakePath = "CMakeLists.txt"
           $content = Get-Content $cmakePath
           
-          # IDs de Epic Games Store (Barony Oficial)
-          $pID = "38276f7f6f4d4127929424c803027b40"
-          $sID = "899732f74136450992383842c1630132"
-          $dID = "39f3796d19ca447285ec43764835848e"
-          $cID = "xyza78912q6mHnd5O1TjL2H9YmD83W4v"
+          # IDs de Epic Games Store (Renombrados para evitar conflicto con $PID)
+          $eosProdID = "38276f7f6f4d4127929424c803027b40"
+          $eosSandID = "899732f74136450992383842c1630132"
+          $eosDeplID = "39f3796d19ca447285ec43764835848e"
+          $eosClieID = "xyza78912q6mHnd5O1TjL2H9YmD83W4v"
           
-          $eosMacros = "-DPRODUCT_ID=\`"$pID\`" -DSANDBOX_ID=\`"$sID\`" -DDEPLOYMENT_ID=\`"$dID\`" -DCLIENT_ID=\`"$cID\`""
+          $eosMacros = "-DPRODUCT_ID=\`"$eosProdID\`" -DSANDBOX_ID=\`"$eosSandID\`" -DDEPLOYMENT_ID=\`"$eosDeplID\`" -DCLIENT_ID=\`"$eosClieID\`""
           
           # 1. Limpieza y Nuke
           $content = $content -replace '-lm', ''
@@ -54,7 +54,7 @@ jobs:
           $content = $content -replace 'target_link_libraries\(barony', "target_link_libraries(barony $libs "
           $content | Set-Content $cmakePath
 
-          # 4. Parches de código (libpng, lambdas, status)
+          # 4. Parches de código
           if (Test-Path "src/savepng.cpp") {
               $pngTxt = [IO.File]::ReadAllText("src/savepng.cpp")
               $pngTxt = $pngTxt -replace 'png_set_rows\(png_ptr, info_ptr, row_pointers\)', 'png_set_rows(png_ptr, info_ptr, (png_bytepp)row_pointers)'
