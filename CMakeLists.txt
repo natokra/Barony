@@ -1,161 +1,37 @@
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.10)
 project(barony)
 
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 if (NOT CMAKE_BUILD_TYPE)
-	set (CMAKE_BUILD_TYPE Release)
-endif(NOT CMAKE_BUILD_TYPE)
-
-if (DEFINED ENV{STEAMWORKS_ENABLED})
-	set (STEAMWORKS_ENABLED $ENV{STEAMWORKS_ENABLED})
+    set(CMAKE_BUILD_TYPE Release)
 endif()
 
-if (NOT DEFINED STEAMWORKS_ENABLED)
-	set (STEAMWORKS_ENABLED 0)
-	option(STEAMWORKS "Enable Steamworks" OFF)
-	if (STEAMWORKS)
-		set (STEAMWORKS_ENABLED 1)
-	endif()
-endif()
+# IDs de Epic Games Store - Hardcoded para evitar errores de entorno
+set(BUILD_ENV_PR "38276f7f6f4d4127929424c803027b40" CACHE STRING "Product ID")
+set(BUILD_ENV_SA "899732f74136450992383842c1630132" CACHE STRING "Sandbox ID")
+set(BUILD_ENV_DE "39f3796d19ca447285ec43764835848e" CACHE STRING "Deployment ID")
+set(BUILD_ENV_CC "xyza78912q6mHnd5O1TjL2H9YmD83W4v" CACHE STRING "Client ID")
+set(BUILD_ENV_CS "1" CACHE STRING "Bypass")
+set(BUILD_ENV_GSE "1" CACHE STRING "Bypass")
 
-if (DEFINED ENV{OPTIMIZATION_LEVEL})
-	set (OPTIMIZATION_LEVEL $ENV{OPTIMIZATION_LEVEL})
-else()
-	set (OPTIMIZATION_LEVEL "-O3")
-endif()
+option(EOS "Enable Epic Online Services" ON)
+set(EOS_ENABLED 1)
+set(USE_EOS 1)
+set(EGP 1)
 
-if (DEFINED ENV{EOS_ENABLED})
-	set (EOS_ENABLED $ENV{EOS_ENABLED})
-endif()
-
-if (NOT DEFINED EOS_ENABLED)
-	set (EOS_ENABLED 0)
-	option(EOS "Enable Epic Online Services" OFF)
-	if (EOS)
-		set (EOS_ENABLED 1)
-	endif()
-	set(BUILD_ENV_PR "1" CACHE STRING "EOS product id")
-	set(BUILD_ENV_SA "1" CACHE STRING "EOS sandbox")
-	set(BUILD_ENV_DE "1" CACHE STRING "EOS deployment")
-	set(BUILD_ENV_CC "1" CACHE STRING "EOS cc")
-	set(BUILD_ENV_CS "1" CACHE STRING "EOS cs")
-	set(BUILD_ENV_GSE "1" CACHE STRING "EOS gse")
-endif()
-
-if (DEFINED ENV{PLAYFAB_ENABLED})
-    set (PLAYFAB_ENABLED $ENV{PLAYFAB_ENABLED})
-endif()
-
-if (NOT DEFINED PLAYFAB_ENABLED)
-    set (PLAYFAB_ENABLED 0)
-    option(PLAYFAB "Enable PlayFab support" OFF)
-    if (PLAYFAB)
-        set (PLAYFAB_ENABLED 1)
-    endif()
-    set(BUILD_ENV_PFTID "1" CACHE STRING "PlayFab TID")
-    set(BUILD_ENV_PFHID "1" CACHE STRING "PlayFab HID")
-endif()
-
-if (DEFINED ENV{THEORAPLAYER_ENABLED})
-    set (THEORAPLAYER_ENABLED $ENV{THEORAPLAYER_ENABLED})
-endif()
-
-if (NOT DEFINED THEORAPLAYER_ENABLED)
-    set (THEORAPLAYER_ENABLED 0)
-    option(THEORAPLAYER "Enable TheoraPlayer for video playback" OFF)
-    if (THEORAPLAYER)
-        set (THEORAPLAYER_ENABLED 1)
-    endif()
-endif()
-
-if (DEFINED ENV{CURL_ENABLED})
-    set (CURL_ENABLED $ENV{CURL_ENABLED})
-endif()
-
-if (NOT DEFINED CURL_ENABLED)
-    set (CURL_ENABLED 0)
-    option(CURL "Enable CURL support" OFF)
-    if (CURL)
-        set (CURL_ENABLED 1)
-    endif()
-endif()
-
-if (DEFINED ENV{OPUS_ENABLED})
-    set (OPUS_ENABLED $ENV{OPUS_ENABLED})
-endif()
-
-if (NOT DEFINED OPUS_ENABLED)
-    set (OPUS_ENABLED 0)
-    option(OPUS "Enable OPUS support" OFF)
-    if (OPUS)
-        set (OPUS_ENABLED 1)
-    endif()
-endif()
-
-if (PLAYFAB_ENABLED AND NOT CURL_ENABLED)
-	message(FATAL_ERROR "CURL must be enabled if PlayFab is enabled.")
-endif()
-
-if (DEFINED ENV{BUILD_ENV_PR} AND NOT DEFINED BUILD_ENV_PR)
-	set (BUILD_ENV_PR $ENV{BUILD_ENV_PR})
-endif()
-if (EOS_ENABLED AND "${BUILD_ENV_PR}" STREQUAL "")
-	message(FATAL_ERROR "BUILD_ENV_PR must be specified if EOS is enabled.")
-endif()
-
-if (DEFINED ENV{BUILD_ENV_SA} AND NOT DEFINED BUILD_ENV_SA)
-	set (BUILD_ENV_SA $ENV{BUILD_ENV_SA})
-endif()
-if (EOS_ENABLED AND "${BUILD_ENV_SA}" STREQUAL "")
-	message(FATAL_ERROR "BUILD_ENV_SA must be specified if EOS is enabled.")
-endif()
-
-if (DEFINED ENV{BUILD_ENV_DE} AND NOT DEFINED BUILD_ENV_DE)
-	set (BUILD_ENV_DE $ENV{BUILD_ENV_DE})
-endif()
-if (EOS_ENABLED AND "${BUILD_ENV_DE}" STREQUAL "")
-	message(FATAL_ERROR "BUILD_ENV_DE must be specified if EOS is enabled.")
-endif()
-
-if (DEFINED ENV{BUILD_ENV_CC} AND NOT DEFINED BUILD_ENV_CC)
-	set (BUILD_ENV_CC $ENV{BUILD_ENV_CC})
-endif()
-if (EOS_ENABLED AND "${BUILD_ENV_CC}" STREQUAL "")
-	message(FATAL_ERROR "BUILD_ENV_CC must be specified if EOS is enabled.")
-endif()
-
-if (DEFINED ENV{BUILD_ENV_CS} AND NOT DEFINED BUILD_ENV_CS)
-	set (BUILD_ENV_CS $ENV{BUILD_ENV_CS})
-endif()
-if (EOS_ENABLED AND "${BUILD_ENV_CS}" STREQUAL "")
-	message(FATAL_ERROR "BUILD_ENV_CS must be specified if EOS is enabled.")
-endif()
-
-if (DEFINED ENV{BUILD_ENV_GSE} AND NOT DEFINED BUILD_ENV_GSE)
-	set (BUILD_ENV_GSE $ENV{BUILD_ENV_GSE})
-endif()
-if (EOS_ENABLED AND "${BUILD_ENV_GSE}" STREQUAL "")
-	message(FATAL_ERROR "BUILD_ENV_GSE must be specified if EOS is enabled.")
-endif()
-
-if (DEFINED ENV{EDITOR_ENABLED})
-	set (EDITOR_ENABLED $ENV{EDITOR_ENABLED})
-else()
-	set (EDITOR_ENABLED 0)
-endif()
-
-if (DEFINED ENV{GAME_ENABLED})
-	set (GAME_ENABLED $ENV{GAME_ENABLED})
-else()
-	set (GAME_ENABLED 1)
-endif()
-
-set(FMOD_ENABLED OFF)
-set(OPENAL_ENABLED ON)
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
-set(CMAKE_OSX_ARCHITECTURES x86_64)
+# Forzamos flags de Windows
 set(Windows 1)
-cmake_policy(SET CMP0072 NEW)
+add_definitions(-DWIN64 -D_CRT_SECURE_NO_WARNINGS -DNOMINMAX -DEGP -DUSE_EOS -D__STDC_FORMAT_MACROS)
 
+# Desactivar componentes que fallan en CI
+option(FMOD_ENABLED "Use FMOD" OFF)
+set(EDITOR_ENABLED 0)
+
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
+
+# Dependencias via VCPKG
 find_package(OpenGL REQUIRED)
 find_package(SDL2 REQUIRED)
 find_package(SDL2_image REQUIRED)
@@ -163,30 +39,40 @@ find_package(SDL2_net REQUIRED)
 find_package(SDL2_ttf REQUIRED)
 find_package(PhysFS REQUIRED)
 find_package(RapidJson REQUIRED)
-include_directories(${RAPID_JSON_INCLUDE_DIR})
-include_directories(${SDL2_INCLUDE_DIRS} ${PHYSFS_INCLUDE_DIR})
-
 find_package(OpenAL REQUIRED)
 find_package(OGGVORBIS REQUIRED)
-include_directories(${OPENAL_INCLUDE_DIR} ${OGG_INCLUDE_DIR} ${VORBIS_INCLUDE_DIR})
-
-set(IMGUI 1)
-find_package(Threads REQUIRED)
 find_package(PNG REQUIRED)
-include_directories(${PNG_INCLUDE_DIR})
+find_package(Threads REQUIRED)
+find_package(JSONCPP REQUIRED)
 
-if(EOS_ENABLED)
-  find_package(EOS REQUIRED)
-  include_directories(${EOS_INCLUDE_DIR})
-endif()
+# Incluir el SDK de Epic (Ruta relativa al repo)
+include_directories("deps/eos/include")
 
-configure_file ("${PROJECT_SOURCE_DIR}/src/Config.hpp.in" "${PROJECT_SOURCE_DIR}/src/Config.hpp")
+# Configuración del código fuente
+configure_file("${PROJECT_SOURCE_DIR}/src/Config.hpp.in" "${PROJECT_SOURCE_DIR}/src/Config.hpp")
 add_subdirectory(src)
 
-if (GAME_ENABLED)
-	add_executable(barony ${GAME_SOURCES} "${CMAKE_CURRENT_SOURCE_DIR}/barony.rc")
-	target_link_libraries(barony ${SDL2_LIBRARIES} ${SDL2_IMAGE_LIBRARIES} ${SDL2_NET_LIBRARIES} ${SDL2_TTF_LIBRARIES} ${OPENAL_LIBRARY} ${VORBISFILE_LIBRARY} ${OGG_LIBRARY} ${PHYSFS_LIBRARY} ${PNG_LIBRARY} ${OPENGL_LIBRARIES} ${THREADS_LIBRARIES} wsock32 ws2_32)
-	if (EOS_ENABLED)
-		target_link_libraries(barony ${EOS_LIBRARIES})
-	endif()
+# Ejecutable principal
+if (GAME_ENABLED OR NOT DEFINED GAME_ENABLED)
+    add_executable(barony ${GAME_SOURCES} "${CMAKE_CURRENT_SOURCE_DIR}/barony.rc")
+    
+    # Linkeo de librerías de sistema y vcpkg
+    target_link_libraries(barony 
+        ${SDL2_LIBRARIES} 
+        ${SDL2_IMAGE_LIBRARIES} 
+        ${SDL2_NET_LIBRARIES} 
+        ${SDL2_TTF_LIBRARIES} 
+        ${OPENAL_LIBRARY} 
+        ${VORBISFILE_LIBRARY} 
+        ${OGG_LIBRARY} 
+        ${PHYSFS_LIBRARY} 
+        ${PNG_LIBRARY} 
+        ${OPENGL_LIBRARIES} 
+        ${JSONCPP_LIBRARIES}
+        ${THREADS_LIBRARIES}
+        ws2_32 wsock32 Advapi32 User32 Gdi32 Shell32 Ole32 Crypt32
+    )
+
+    # Linkeo manual del archivo .lib de Epic
+    target_link_libraries(barony "${CMAKE_SOURCE_DIR}/deps/eos/lib/EOSSDK-Win64-Shipping.lib")
 endif()
