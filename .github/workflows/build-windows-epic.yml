@@ -12,6 +12,7 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
+      # --- CACHE DE VCPKG (Ahorra tiempo desde el 2do run) ---
       - name: Export GitHub Actions Cache Env
         uses: actions/github-script@v7
         with:
@@ -34,7 +35,7 @@ jobs:
           $eosLibPath = $eosLibFile.FullName.Replace('\', '/')
           $eosInclude = "$pwd/deps/eos/include".Replace('\', '/')
           
-          # IDs Reales de Epic
+          # IDs Reales para inyección en binario
           $eProdID = "38276f7f6f4d4127929424c803027b40"
           $eSandID = "899732f74136450992383842c1630132"
           $eDeplID = "39f3796d19ca447285ec43764835848e"
@@ -42,15 +43,15 @@ jobs:
           $eosMacros = "-DPRODUCT_ID=\`"$eProdID\`" -DSANDBOX_ID=\`"$eSandID\`" -DDEPLOYMENT_ID=\`"$eDeplID\`" -DCLIENT_ID=\`"$eClieID\`""
           
           $cmakePath = "CMakeLists.txt"
-          # CORREGIDO: Get-Content en lugar de Get-Get-Content
+          # Corregido: Get-Content
           $content = Get-Content $cmakePath
           
-          # Inyectamos headers y macros
+          # Inyecciones críticas
           $content = $content -replace 'project\(barony\)', "project(barony)`ninclude_directories(`"$vcpkgInclude`")`ninclude_directories(`"$eosInclude`")`nadd_definitions(-DNOMINMAX -D_CRT_SECURE_NO_WARNINGS -DWIN64 -DEGP -DUSE_EOS -D__STDC_FORMAT_MACROS $eosMacros)"
           $content = $content -replace 'target_link_libraries\(barony', "target_link_libraries(barony `"$eosLibPath`" "
           $content | Set-Content $cmakePath
 
-          # Parches de código x64
+          # Parches de código x64 (SavePNG y Lambdas)
           if (Test-Path "src/savepng.cpp") {
               $pngTxt = [IO.File]::ReadAllText("src/savepng.cpp")
               $pngTxt = $pngTxt -replace 'png_set_rows\(png_ptr, info_ptr, row_pointers\)', 'png_set_rows(png_ptr, info_ptr, (png_bytepp)row_pointers)'
@@ -81,7 +82,6 @@ jobs:
           Get-ChildItem -Path "." -Filter "EOSSDK-Win64-Shipping.dll" -Recurse | Copy-Item -Destination $outDir -Force
 
       - name: Upload Artifact
-        # CORREGIDO: upload-artifact en lugar de artifact
         uses: actions/upload-artifact@v4
         with:
           name: barony-15p-x64-FINAL
