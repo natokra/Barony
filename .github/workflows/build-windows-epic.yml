@@ -20,24 +20,23 @@ jobs:
         shell: pwsh
         run: |
           $vcpkgRoot = $env:VCPKG_INSTALLATION_ROOT.Replace('\', '/')
-          $libDir = "$vcpkgRoot/installed/x86-windows/lib"
-          $includeDir = "$vcpkgRoot/installed/x86-windows/include"
+          $vcpkgInclude = "$vcpkgRoot/installed/x86-windows/include"
           
           $cmakePath = "CMakeLists.txt"
           $content = Get-Content $cmakePath
           
-          # 1. Limpieza de subproyectos
+          # 1. Limpieza de módulos basura
           $content = $content -replace 'add_subdirectory\(editor\)', '# Editor OFF'
           $content = $content -replace 'find_package\(FMOD REQUIRED\)', '# FMOD OFF'
           $content = $content -replace 'find_package\(FMOD\)', '# FMOD OFF'
           
-          # 2. Inyectar Paths SIN GLEW_STATIC (Usaremos DLL linking)
-          $content = $content -replace 'project\(barony\)', "project(barony)`ninclude_directories(`"$includeDir`")`nadd_definitions(-DNOMINMAX -D_CRT_SECURE_NO_WARNINGS -DWIN32)"
+          # 2. Inyectar Paths y Definiciones (ELIMINAMOS GLEW_STATIC)
+          # Usamos find_package para que vcpkg maneje la decoración de símbolos automáticamente
+          $content = $content -replace 'project\(barony\)', "project(barony)`nfind_package(GLEW REQUIRED)`ninclude_directories(`"$vcpkgInclude`")`nadd_definitions(-DNOMINMAX -D_CRT_SECURE_NO_WARNINGS -DWIN32)"
           
-          # 3. Enlace Dinámico Forzado
-          # Usamos glew32.lib (Import lib) en lugar de glew32s.lib (Static)
-          $libs = "glew32.lib physfs.lib SDL2.lib SDL2_image.lib SDL2_net.lib SDL2_ttf.lib jsoncpp.lib Opengl32.lib Glu32.lib Shell32.lib Advapi32.lib"
-          $content = $content -replace 'target_link_libraries\(barony', "target_link_libraries(barony $libs "
+          # 3. Enlace vía Target de CMake (Más robusto que rutas a .lib)
+          # GLEW::GLEW es el target oficial que vcpkg configura correctamente
+          $content = $content -replace 'target_link_libraries\(barony', "target_link_libraries(barony GLEW::GLEW "
           
           $content | Set-Content $cmakePath
 
@@ -51,7 +50,7 @@ jobs:
           }
           Add-Content -Path "src/main.hpp" -Value "`n#ifdef GetObject`n#undef GetObject`n#endif"
 
-      - name: Configure CMake (Win32 Dynamic)
+      - name: Configure CMake (Win32)
         run: |
           cmake -B build -A Win32 `
           -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" `
