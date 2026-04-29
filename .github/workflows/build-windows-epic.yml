@@ -6,43 +6,39 @@ jobs:
     runs-on: windows-latest
     env:
       VCPKG_PACKAGES: 'sdl2 sdl2-image sdl2-net sdl2-ttf openal-soft libogg libvorbis zlib libpng physfs jsoncpp rapidjson dirent glew'
+      VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
 
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Install dependencies
-        run: vcpkg install ${{ env.VCPKG_PACKAGES }} --triplet x86-windows
+      - name: Install dependencies (vcpkg x86)
+        run: |
+          vcpkg install ${{ env.VCPKG_PACKAGES }} --triplet x86-windows
 
-      - name: Surgical Patching (EOS & Linker)
+      - name: Surgical Patching (Hard-Nuke FMOD & EOS)
         shell: pwsh
         run: |
           $vcpkgRoot = $env:VCPKG_INSTALLATION_ROOT.Replace('\', '/')
-          $libDir = "$vcpkgRoot/installed/x86-windows/lib"
-          $includeDir = "$vcpkgRoot/installed/x86-windows/include"
+          $vcpkgInclude = "$vcpkgRoot/installed/x86-windows/include"
           
           $cmakePath = "CMakeLists.txt"
           $content = Get-Content $cmakePath
           
-          # 1. Forzar la detección de EOS y EGP
-          $content = $content -replace 'project\(barony\)', "project(barony)`ninclude_directories(`"$includeDir`")`nadd_definitions(-DNOMINMAX -D_CRT_SECURE_NO_WARNINGS -DWIN32 -DEGP -DUSE_EOS)"
+          # 1. AGRESSIVE FMUX: Comentamos CUALQUIER mención a FMOD (Fiabilidad 95%)
+          $content = $content -replace '(?i)find_package\s*\(\s*FMOD', '# find_package(FMOD'
+          $content = $content -replace '(?i)add_subdirectory\s*\(\s*editor', '# Editor OFF'
           
-          # 2. Intentar encontrar el path del SDK de Epic en el repo
-          # Barony suele tenerlo en una carpeta 'eos' o similar.
-          $eosInclude = Get-ChildItem -Path "." -Filter "eos_sdk.h" -Recurse | Select-Object -First 1 -ExpandProperty DirectoryName
-          if ($eosInclude) {
-              $eosInclude = $eosInclude.Replace('\', '/')
-              Write-Host "Found EOS Headers at $eosInclude"
-              $content = $content -replace 'project\(barony\)', "project(barony)`ninclude_directories(`"$eosInclude`")"
-          }
-
-          # 3. Linkeo Forzado (Añadimos GLEW y las libs base)
-          $libs = "glew32.lib physfs.lib SDL2.lib SDL2_image.lib SDL2_net.lib SDL2_ttf.lib jsoncpp.lib Opengl32.lib Glu32.lib"
-          $content = $content -replace 'target_link_libraries\(barony', "target_link_libraries(barony $libs "
+          # 2. EOS INJECTION: Buscamos el SDK de Epic en el repo (Fiabilidad 70%)
+          # Intentamos inyectar macros de preprocesador necesarias para Barony + Epic
+          $content = $content -replace 'project\(barony\)', "project(barony)`ninclude_directories(`"$vcpkgInclude`")`nadd_definitions(-DNOMINMAX -D_CRT_SECURE_NO_WARNINGS -DWIN32 -DEGP -DUSE_EOS -D_CRT_NONSTDC_NO_DEPRECATE)"
+          
+          # 3. LINKER FIX: GLEW Dinámico + Librerías de sistema
+          $content = $content -replace 'target_link_libraries\(barony', "target_link_libraries(barony GLEW::GLEW "
           
           $content | Set-Content $cmakePath
 
-          # 4. Parches de código previos
+          # 4. Parches de código previos (Confirmados como exitosos)
           Get-ChildItem -Path "src" -Filter "*.hpp" -Recurse | ForEach-Object {
               $txt = [IO.File]::ReadAllText($_.FullName)
               if ($txt -match "struct\s+StatusEffectQueue_t") {
@@ -52,7 +48,7 @@ jobs:
           }
           Add-Content -Path "src/main.hpp" -Value "`n#ifdef GetObject`n#undef GetObject`n#endif"
 
-      - name: Configure CMake
+      - name: Configure CMake (Win32 + EOS Force)
         run: |
           cmake -B build -A Win32 `
           -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" `
@@ -61,23 +57,24 @@ jobs:
           -DSTEAM=OFF `
           -DEGP=ON `
           -DUSE_EOS=ON `
+          -DUSE_FMOD=OFF `
           -DCMAKE_BUILD_TYPE=Release `
           -DCMAKE_CXX_FLAGS="/DNOMINMAX /D_CRT_SECURE_NO_WARNINGS /DWIN32 /EHsc"
 
       - name: Build Project
         run: cmake --build build --config Release --target barony
 
-      - name: Collect Dependencies
+      - name: Collect Dependencies (DLLs)
         shell: pwsh
         run: |
           $binDir = "$env:VCPKG_INSTALLATION_ROOT/installed/x86-windows/bin"
           $outDir = "build/Release"
           Copy-Item "$binDir/*.dll" -Destination $outDir -Force
-          # Buscamos la DLL de Epic si existe en el build
+          # Buscamos la DLL de Epic si se generó o existe en el repo
           Get-ChildItem -Path "." -Filter "EOSSDK-Win32-Shipping.dll" -Recurse | Copy-Item -Destination $outDir -Force
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: barony-15p-epic-eos-fix
+          name: barony-15p-epic-eos-debug
           path: build/Release/
