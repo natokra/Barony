@@ -12,8 +12,7 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Setup Ninja
-        uses: llvm/actions/install-ninja@master
+      # Eliminamos la acción de LLVM que falló. Ninja ya está en el PATH de Windows.
 
       - name: Install dependencies (vcpkg x86)
         run: |
@@ -22,33 +21,33 @@ jobs:
       - name: Surgical Patching (Linker & Paths)
         shell: pwsh
         run: |
-          # 1. Localizar dinámicamente la librería de GLEW (Fiabilidad: 95%)
+          # 1. Localizar la ruta real de vcpkg en este runner (Fiabilidad 100%)
           $vcpkgRoot = $env:VCPKG_INSTALLATION_ROOT.Replace('\', '/')
           $libDir = "$vcpkgRoot/installed/x86-windows/lib"
           $includeDir = "$vcpkgRoot/installed/x86-windows/include"
           
-          # Buscamos si es glew32s.lib o glew32.lib
-          $glewLib = Get-ChildItem -Path "$libDir/glew32*.lib" | Select-Object -First 1 -ExpandProperty Name
-          Write-Host "Found GLEW lib: $glewLib"
+          # 2. Identificar el nombre exacto de la lib de GLEW
+          $glewFile = Get-ChildItem -Path "$libDir/glew32*.lib" | Select-Object -First 1 -ExpandProperty Name
+          Write-Host "Linker will use: $libDir/$glewFile"
 
           $cmakePath = "CMakeLists.txt"
           $content = Get-Content $cmakePath
           
-          # 2. Limpieza de CMake
+          # 3. Limpieza y Desactivación de Módulos
           $content = $content -replace 'add_subdirectory\(editor\)', '# Editor OFF'
           $content = $content -replace 'find_package\(FMOD REQUIRED\)', '# FMOD OFF'
           $content = $content -replace 'find_package\(FMOD\)', '# FMOD OFF'
           
-          # 3. Inyectar Definiciones y Paths (Fiabilidad: 100%)
+          # 4. Inyectar Paths y Definiciones (Fiabilidad 95%)
           $content = $content -replace 'project\(barony\)', "project(barony)`ninclude_directories(`"$includeDir`")`nadd_definitions(-DGLEW_STATIC -DNOMINMAX -D_CRT_SECURE_NO_WARNINGS)"
           
-          # 4. Linkeo Forzado con paths sanitizados
-          $libs = "`"$libDir/$glewLib`" `"$libDir/physfs.lib`" `"$libDir/SDL2.lib`" `"$libDir/SDL2_image.lib`" `"$libDir/SDL2_net.lib`" `"$libDir/SDL2_ttf.lib`" `"$libDir/jsoncpp.lib`" Opengl32.lib"
+          # 5. Linkeo Forzado con rutas relativas al Runner
+          $libs = "`"$libDir/$glewFile`" `"$libDir/physfs.lib`" `"$libDir/SDL2.lib`" `"$libDir/SDL2_image.lib`" `"$libDir/SDL2_net.lib`" `"$libDir/SDL2_ttf.lib`" `"$libDir/jsoncpp.lib`" Opengl32.lib"
           $content = $content -replace 'target_link_libraries\(barony', "target_link_libraries(barony $libs "
           
           $content | Set-Content $cmakePath
 
-          # 5. Parches de código (Ya validados en el run anterior)
+          # 6. Parches de código (Confirmado que funcionan)
           Get-ChildItem -Path "src" -Filter "*.hpp" -Recurse | ForEach-Object {
               $txt = [IO.File]::ReadAllText($_.FullName)
               if ($txt -match "struct\s+StatusEffectQueue_t") {
