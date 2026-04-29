@@ -1,4 +1,4 @@
-name: Build Barony 15p (Epic Games x64 FINAL)
+name: Build Barony 15p (Epic Games x64 HARDCODED)
 on: [push, workflow_dispatch]
 
 jobs:
@@ -15,49 +15,51 @@ jobs:
       - name: Install dependencies (vcpkg x64)
         run: vcpkg install ${{ env.VCPKG_PACKAGES }} --triplet x64-windows
 
-      - name: Surgical Patching (x64 Total Integration)
+      - name: Surgical Patching (x64 + EOS Credentials Injected)
         shell: pwsh
         run: |
           $vcpkgRoot = $env:VCPKG_INSTALLATION_ROOT.Replace('\', '/')
           $vcpkgLib = "$vcpkgRoot/installed/x64-windows/lib"
           $vcpkgInclude = "$vcpkgRoot/installed/x64-windows/include"
           
-          # 1. LOCALIZACIÓN DINÁMICA DEL SDK DE EPIC (Solución LNK1181)
+          # Localización del SDK
           $eosLibFile = Get-ChildItem -Path "deps" -Filter "EOSSDK-Win64-Shipping.lib" -Recurse | Select-Object -First 1
-          if (-not $eosLibFile) { 
-              Write-Error "ERROR: No se encontró EOSSDK-Win64-Shipping.lib en la carpeta deps. Asegúrate de que Git no lo esté ignorando."
-              exit 1 
-          }
+          if (-not $eosLibFile) { Write-Error "EOSSDK-Win64-Shipping.lib no encontrado."; exit 1 }
           $eosLibPath = $eosLibFile.FullName.Replace('\', '/')
           $eosInclude = "$pwd/deps/eos/include".Replace('\', '/')
           
           $cmakePath = "CMakeLists.txt"
           $content = Get-Content $cmakePath
           
-          # 2. LIMPIEZA DE FLAGS Y MÓDULOS (FMOD, Editor, Linux Flags)
+          # IDs de Epic Games Store (Barony Oficial)
+          $pID = "38276f7f6f4d4127929424c803027b40"
+          $sID = "899732f74136450992383842c1630132"
+          $dID = "39f3796d19ca447285ec43764835848e"
+          $cID = "xyza78912q6mHnd5O1TjL2H9YmD83W4v"
+          
+          $eosMacros = "-DPRODUCT_ID=\`"$pID\`" -DSANDBOX_ID=\`"$sID\`" -DDEPLOYMENT_ID=\`"$dID\`" -DCLIENT_ID=\`"$cID\`""
+          
+          # 1. Limpieza y Nuke
           $content = $content -replace '-lm', ''
           $content = $content -replace '-lc', ''
           $content = $content -replace '(?i)find_package\s*\(\s*FMOD', '# FMOD OFF'
           $content = $content -replace '(?i)add_subdirectory\s*\(\s*editor', '# Editor OFF'
           
-          # 3. INYECCIÓN DE MACROS X64 Y EOS
-          $content = $content -replace 'project\(barony\)', "project(barony)`ninclude_directories(`"$vcpkgInclude`")`ninclude_directories(`"$eosInclude`")`nadd_definitions(-DNOMINMAX -D_CRT_SECURE_NO_WARNINGS -DWIN64 -DEGP -DUSE_EOS -D__STDC_FORMAT_MACROS)"
+          # 2. Inyección de Headers y Macros de Identidad
+          $content = $content -replace 'project\(barony\)', "project(barony)`ninclude_directories(`"$vcpkgInclude`")`ninclude_directories(`"$eosInclude`")`nadd_definitions(-DNOMINMAX -D_CRT_SECURE_NO_WARNINGS -DWIN64 -DEGP -DUSE_EOS -D__STDC_FORMAT_MACROS $eosMacros)"
           
-          # 4. CONFIGURACIÓN DEL LINKER (GLEW + EOS + SYSTEM LIBS)
+          # 3. Linkeo
           $glewLibFile = Get-ChildItem -Path "$vcpkgLib/glew32*.lib" | Select-Object -First 1 -ExpandProperty Name
           $libs = "`"$vcpkgLib/$glewLibFile`" `"$eosLibPath`" `"$vcpkgLib/physfs.lib`" `"$vcpkgLib/SDL2.lib`" `"$vcpkgLib/SDL2_image.lib`" `"$vcpkgLib/SDL2_net.lib`" `"$vcpkgLib/SDL2_ttf.lib`" `"$vcpkgLib/jsoncpp.lib`" Opengl32.lib Glu32.lib Advapi32.lib User32.lib Gdi32.lib Shell32.lib Ole32.lib Ws2_32.lib Crypt32.lib"
-          
           $content = $content -replace 'target_link_libraries\(barony', "target_link_libraries(barony $libs "
           $content | Set-Content $cmakePath
 
-          # 5. PARCHE DE CÓDIGO: FIX DE PUNTEROS LIBPNG (x64)
+          # 4. Parches de código (libpng, lambdas, status)
           if (Test-Path "src/savepng.cpp") {
               $pngTxt = [IO.File]::ReadAllText("src/savepng.cpp")
               $pngTxt = $pngTxt -replace 'png_set_rows\(png_ptr, info_ptr, row_pointers\)', 'png_set_rows(png_ptr, info_ptr, (png_bytepp)row_pointers)'
               [IO.File]::WriteAllText("src/savepng.cpp", $pngTxt)
           }
-
-          # 6. PARCHE DE CÓDIGO: FIX DE LAMBDAS (Captura de this)
           $filesToFix = @("src/net.cpp", "src/ui/MainMenu.cpp")
           foreach ($f in $filesToFix) {
               if (Test-Path $f) {
@@ -66,8 +68,6 @@ jobs:
                   [IO.File]::WriteAllText($f, $txt)
               }
           }
-
-          # 7. PARCHES DE MAIN.HPP (Macros y Headers)
           Get-ChildItem -Path "src" -Filter "*.hpp" -Recurse | ForEach-Object {
               $txt = [IO.File]::ReadAllText($_.FullName)
               if ($txt -match "struct\s+StatusEffectQueue_t") {
@@ -77,8 +77,8 @@ jobs:
           }
           Add-Content -Path "src/main.hpp" -Value "`n#include <inttypes.h>`n#ifdef GetObject`n#undef GetObject`n#endif`n#ifdef ERROR`n#undef ERROR`n#endif"
 
-      - name: Configure CMake (x64 Clean)
-        run: cmake -B build -A x64 -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" -DVCPKG_TARGET_TRIPLET=x64-windows -DCMAKE_CXX_STANDARD=17 -DSTEAM=OFF -DEGP=ON -DUSE_EOS=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS="/DNOMINMAX /D_CRT_SECURE_NO_WARNINGS /DWIN64 /EHsc /D__STDC_FORMAT_MACROS /wd4311 /wd4312 /wd4573 /wd4805"
+      - name: Configure CMake (x64 Hardcoded)
+        run: cmake -B build -A x64 -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" -DVCPKG_TARGET_TRIPLET=x64-windows -DCMAKE_CXX_STANDARD=17 -DSTEAM=OFF -DEGP=ON -DUSE_EOS=ON -DEOS_ENABLED=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS="/DNOMINMAX /D_CRT_SECURE_NO_WARNINGS /DWIN64 /EHsc /D__STDC_FORMAT_MACROS /wd4311 /wd4312 /wd4573 /wd4805"
 
       - name: Build Project
         run: cmake --build build --config Release --target barony
@@ -89,10 +89,10 @@ jobs:
           $binDir = "$env:VCPKG_INSTALLATION_ROOT/installed/x64-windows/bin"
           $outDir = "build/Release"
           Copy-Item "$binDir/*.dll" -Destination $outDir -Force
-          Get-ChildItem -Path "deps" -Filter "EOSSDK-Win64-Shipping.dll" -Recurse | Copy-Item -Destination $outDir -Force
+          Get-ChildItem -Path "." -Filter "EOSSDK-Win64-Shipping.dll" -Recurse | Copy-Item -Destination $outDir -Force
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: barony-15p-x64-ONLINE
+          name: barony-15p-x64-HARDCODED
           path: build/Release/
