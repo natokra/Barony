@@ -12,7 +12,6 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # --- CACHE DE VCPKG (Ahorra tiempo desde el 2do run) ---
       - name: Export GitHub Actions Cache Env
         uses: actions/github-script@v7
         with:
@@ -26,33 +25,30 @@ jobs:
       - name: Surgical Patching (Source Code Only)
         shell: pwsh
         run: |
-          # 1. Fix x64 Pointers en SavePNG
+          # Fix x64 Pointers
           if (Test-Path "src/savepng.cpp") {
               $txt = [IO.File]::ReadAllText("src/savepng.cpp")
               $txt = $txt -replace 'png_set_rows\(png_ptr, info_ptr, row_pointers\)', 'png_set_rows(png_ptr, info_ptr, (png_bytepp)row_pointers)'
               [IO.File]::WriteAllText("src/savepng.cpp", $txt)
-              Write-Host "Patch aplicado a savepng.cpp"
           }
 
-          # 2. Fix Lambda Captures en Net y UI
+          # Fix Lambda Captures
           $files = @("src/net.cpp", "src/ui/MainMenu.cpp")
           foreach ($f in $files) {
               if (Test-Path $f) {
                   $txt = [IO.File]::ReadAllText($f)
                   $txt = $txt -replace '\[=\s*\]\s*\(', '[=, this]('
                   [IO.File]::WriteAllText($f, $txt)
-                  Write-Host "Patch aplicado a $f"
               }
           }
 
-          # 3. Fix Headers en main.hpp
+          # Fix main.hpp Headers
           if (Test-Path "src/main.hpp") {
               Add-Content -Path "src/main.hpp" -Value "`n#include <inttypes.h>`n#ifdef GetObject`n#undef GetObject`n#endif`n#ifdef ERROR`n#undef ERROR`n#endif"
-              Write-Host "Patch aplicado a main.hpp"
           }
 
       - name: Configure CMake
-        run: cmake -B build -A x64 -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" -DVCPKG_TARGET_TRIPLET=x64-windows -DCMAKE_CXX_STANDARD=17 -DSTEAM=OFF -DEGP=ON -DUSE_EOS=ON -DEOS_ENABLED=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS="/DNOMINMAX /D_CRT_SECURE_NO_WARNINGS /DWIN64 /EHsc /D__STDC_FORMAT_MACROS /wd4311 /wd4312 /wd4573 /wd4805"
+        run: cmake -B build -A x64 -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" -DVCPKG_TARGET_TRIPLET=x64-windows -DCMAKE_BUILD_TYPE=Release
 
       - name: Build Project
         run: cmake --build build --config Release --target barony
