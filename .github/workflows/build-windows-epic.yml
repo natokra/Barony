@@ -23,31 +23,37 @@ jobs:
         run: |
           vcpkg install ${{ env.VCPKG_PACKAGES }} --triplet x86-windows
 
-      - name: Surgical Patching (Source & CMake)
+      - name: Bruteforce Patch (CMake & Source)
         shell: pwsh
         run: |
-          # 1. CMake: Nuke Editor y FMOD
           $cmakePath = "CMakeLists.txt"
+          $vcpkgLib = "$env:VCPKG_INSTALLATION_ROOT/installed/x86-windows/lib"
+          $vcpkgInclude = "$env:VCPKG_INSTALLATION_ROOT/installed/x86-windows/include"
+          
           $content = Get-Content $cmakePath
+          
+          # 1. Desactivar subproyectos que fallan
           $content = $content -replace 'add_subdirectory\(editor\)', '# Editor OFF'
           $content = $content -replace 'find_package\(FMOD REQUIRED\)', '# FMOD OFF'
-          $vcpkgInclude = "`$ENV{VCPKG_INSTALLATION_ROOT}/installed/x86-windows/include"
-          $content = $content -replace 'project\(barony\)', "project(barony)`ninclude_directories($vcpkgInclude)`nadd_definitions(-DNOMINMAX -D_CRT_SECURE_NO_WARNINGS)"
+          
+          # 2. Inyectar Definiciones y Paths de vcpkg al inicio del proyecto
+          $content = $content -replace 'project\(barony\)', "project(barony)`ninclude_directories($vcpkgInclude)`nadd_definitions(-DGLEW_STATIC -DNOMINMAX -D_CRT_SECURE_NO_WARNINGS)"
+          
+          # 3. FORZAR LINKEO: Inyectamos las librerias .lib explicitamente en el target barony
+          # Esto evita que CMake use sus propios scripts de busqueda que estan rotos
+          $libs = "`"$vcpkgLib/glew32s.lib`" `"$vcpkgLib/physfs.lib`" `"$vcpkgLib/SDL2.lib`" `"$vcpkgLib/SDL2_image.lib`" `"$vcpkgLib/SDL2_net.lib`" `"$vcpkgLib/SDL2_ttf.lib`" `"$vcpkgLib/jsoncpp.lib`" Opengl32.lib"
+          $content = $content -replace 'target_link_libraries\(barony', "target_link_libraries(barony $libs "
+          
           $content | Set-Content $cmakePath
 
-          # 2. Fix C2512 StatusEffectQueue_t (Regex Multi-linea)
-          # Buscamos el patrón ignorando espacios y saltos de línea
+          # 4. Mantener parches de codigo previos (Fiabilidad 100% ya que compilo)
           Get-ChildItem -Path "src" -Filter "*.hpp" -Recurse | ForEach-Object {
               $txt = [IO.File]::ReadAllText($_.FullName)
               if ($txt -match "struct\s+StatusEffectQueue_t") {
-                  Write-Host "Found target in $($_.FullName)"
-                  # Inyectamos el constructor justo después de la apertura de la llave
                   $txt = $txt -replace "(struct\s+StatusEffectQueue_t\s*\{)", "`$1 StatusEffectQueue_t() = default;"
                   [IO.File]::WriteAllText($_.FullName, $txt)
               }
           }
-
-          # 3. Nuke GetObject al final de main.hpp
           Add-Content -Path "src/main.hpp" -Value "`n#ifdef GetObject`n#undef GetObject`n#endif"
 
       - name: Configure CMake (Win32)
@@ -60,7 +66,7 @@ jobs:
           -DEGP=ON `
           -DUSE_FMOD=OFF `
           -DCMAKE_BUILD_TYPE=Release `
-          -DCMAKE_CXX_FLAGS="/DNOMINMAX /D_CRT_SECURE_NO_WARNINGS /DWIN32_LEAN_AND_MEAN /EHsc"
+          -DCMAKE_CXX_FLAGS="/DNOMINMAX /D_CRT_SECURE_NO_WARNINGS /DWIN32_LEAN_AND_MEAN /EHsc /DGLEW_STATIC"
 
       - name: Build Project
         run: cmake --build build --config Release --target barony
