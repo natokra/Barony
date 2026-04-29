@@ -137,20 +137,6 @@ if (EOS_ENABLED AND "${BUILD_ENV_GSE}" STREQUAL "")
 	message(FATAL_ERROR "BUILD_ENV_GSE must be specified if EOS is enabled.")
 endif()
 
-if (DEFINED ENV{BUILD_ENV_PFTID} AND NOT DEFINED BUILD_ENV_PFTID)
-	set (BUILD_ENV_PFTID $ENV{BUILD_ENV_PFTID})
-endif()
-if (PLAYFAB_ENABLED AND "${BUILD_ENV_PFTID}" STREQUAL "")
-	message(FATAL_ERROR "BUILD_ENV_PFTID must be specified if PlayFab is enabled.")
-endif()
-
-if (DEFINED ENV{BUILD_ENV_PFHID} AND NOT DEFINED BUILD_ENV_PFHID)
-	set (BUILD_ENV_PFHID $ENV{BUILD_ENV_PFHID})
-endif()
-if (PLAYFAB_ENABLED AND "${BUILD_ENV_PFHID}" STREQUAL "")
-	message(FATAL_ERROR "BUILD_ENV_PFHID must be specified if PlayFab is enabled.")
-endif()
-
 if (DEFINED ENV{EDITOR_ENABLED})
 	set (EDITOR_ENABLED $ENV{EDITOR_ENABLED})
 else()
@@ -165,13 +151,8 @@ endif()
 
 set(FMOD_ENABLED OFF)
 set(OPENAL_ENABLED ON)
-
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
 set(CMAKE_OSX_ARCHITECTURES x86_64)
-
-if (EOS_ENABLED)
-	message("Building with EOS")
-endif()
 
 set (Windows 1)
 cmake_policy(SET CMP0072 NEW)
