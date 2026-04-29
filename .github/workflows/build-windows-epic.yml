@@ -1,4 +1,4 @@
-name: Build Barony 15p (Epic Games x64 FINAL FIX)
+name: Build Barony 15p (Epic Games x64 STABLE)
 on: [push, workflow_dispatch]
 
 jobs:
@@ -6,7 +6,6 @@ jobs:
     runs-on: windows-latest
     env:
       VCPKG_PACKAGES: 'sdl2 sdl2-image sdl2-net sdl2-ttf openal-soft libogg libvorbis zlib libpng physfs jsoncpp rapidjson dirent glew'
-      VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
 
     steps:
       - name: Checkout Code
@@ -15,51 +14,52 @@ jobs:
       - name: Install dependencies (vcpkg x64)
         run: vcpkg install ${{ env.VCPKG_PACKAGES }} --triplet x64-windows
 
-      - name: Surgical Patching (x64 Linker & Macro Fix)
+      - name: Surgical Patching (Deep x64 Clean)
         shell: pwsh
         run: |
           $vcpkgRoot = $env:VCPKG_INSTALLATION_ROOT.Replace('\', '/')
           $vcpkgInclude = "$vcpkgRoot/installed/x64-windows/include"
           $vcpkgLib = "$vcpkgRoot/installed/x64-windows/lib"
-          
           $eosInclude = "$pwd/deps/eos/include".Replace('\', '/')
           $eosLib = "$pwd/deps/eos/lib/EOSSDK-Win64-Shipping.lib".Replace('\', '/')
           
           $cmakePath = "CMakeLists.txt"
           $content = Get-Content $cmakePath
           
-          # 1. Nuke FMOD, Editor y Fix de Macro ERROR
+          # 1. Limpieza de Flags de Linux que ensucian el Linker de Windows
+          $content = $content -replace '-lm', ''
           $content = $content -replace '(?i)find_package\s*\(\s*FMOD', '# FMOD OFF'
           $content = $content -replace '(?i)add_subdirectory\s*\(\s*editor', '# Editor OFF'
           
-          # 2. Inyectar macros críticas para x64 y compatibilidad
+          # 2. Inyectar macros y FIX de PRId64 + Captura de Lambdas
           $content = $content -replace 'project\(barony\)', "project(barony)`ninclude_directories(`"$vcpkgInclude`")`ninclude_directories(`"$eosInclude`")`nadd_definitions(-DNOMINMAX -D_CRT_SECURE_NO_WARNINGS -DWIN64 -DEGP -DUSE_EOS -D__STDC_FORMAT_MACROS)"
           
-          # 3. Linkeo (GLEW + EOS + System Libs)
+          # 3. Linkeo (GLEW + EOS + System Libs + Math Fix)
           $glewLibFile = Get-ChildItem -Path "$vcpkgLib/glew32*.lib" | Select-Object -First 1 -ExpandProperty Name
           $libs = "`"$vcpkgLib/$glewLibFile`" `"$eosLib`" `"$vcpkgLib/physfs.lib`" `"$vcpkgLib/SDL2.lib`" `"$vcpkgLib/SDL2_image.lib`" `"$vcpkgLib/SDL2_net.lib`" `"$vcpkgLib/SDL2_ttf.lib`" `"$vcpkgLib/jsoncpp.lib`" Opengl32.lib Glu32.lib Advapi32.lib User32.lib Gdi32.lib Shell32.lib Ole32.lib Ws2_32.lib Crypt32.lib"
           
           $content = $content -replace 'target_link_libraries\(barony', "target_link_libraries(barony $libs "
           $content | Set-Content $cmakePath
 
-          # 4. Parches de código (Fixing Entry Point conflicts)
-          Get-ChildItem -Path "src" -Filter "*.hpp" -Recurse | ForEach-Object {
-              $txt = [IO.File]::ReadAllText($_.FullName)
-              if ($txt -match "struct\s+StatusEffectQueue_t") {
-                  $txt = $txt -replace "(struct\s+StatusEffectQueue_t\s*\{)", "`$1 StatusEffectQueue_t() = default;"
-                  [IO.File]::WriteAllText($_.FullName, $txt)
+          # 4. Parche de Código: Forzar captura de 'this' en lambdas problemáticas
+          $filesToFix = @("src/net.cpp", "src/ui/MainMenu.cpp")
+          foreach ($f in $filesToFix) {
+              if (Test-Path $f) {
+                  $txt = [IO.File]::ReadAllText($f)
+                  # Cambiamos capturas [=] por [=, this] para satisfacer al compilador x64
+                  $txt = $txt -replace '\[=\s*\]\s*\(', '[=, this]('
+                  [IO.File]::WriteAllText($f, $txt)
               }
           }
           Add-Content -Path "src/main.hpp" -Value "`n#include <inttypes.h>`n#ifdef GetObject`n#undef GetObject`n#endif`n#ifdef ERROR`n#undef ERROR`n#endif"
 
-      - name: Configure CMake (x64)
-        # Agregamos /wd4311 /wd4312 para ignorar los warnings de punteros que Barony tiene por diseño
-        run: cmake -B build -A x64 -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" -DVCPKG_TARGET_TRIPLET=x64-windows -DCMAKE_CXX_STANDARD=17 -DSTEAM=OFF -DEGP=ON -DUSE_EOS=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS="/DNOMINMAX /D_CRT_SECURE_NO_WARNINGS /DWIN64 /EHsc /D__STDC_FORMAT_MACROS /wd4311 /wd4312"
+      - name: Configure CMake (x64 Clean)
+        run: cmake -B build -A x64 -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" -DVCPKG_TARGET_TRIPLET=x64-windows -DCMAKE_CXX_STANDARD=17 -DSTEAM=OFF -DEGP=ON -DUSE_EOS=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS="/DNOMINMAX /D_CRT_SECURE_NO_WARNINGS /DWIN64 /EHsc /D__STDC_FORMAT_MACROS /wd4311 /wd4312 /wd4573"
 
       - name: Build Project
         run: cmake --build build --config Release --target barony
 
-      - name: Collect Artifacts
+      - name: Collect
         shell: pwsh
         run: |
           $binDir = "$env:VCPKG_INSTALLATION_ROOT/installed/x64-windows/bin"
@@ -70,5 +70,5 @@ jobs:
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: barony-15p-x64-FIXED
+          name: barony-15p-x64-STABLE
           path: build/Release/
