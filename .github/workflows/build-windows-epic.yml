@@ -25,22 +25,17 @@ jobs:
           $cmakePath = "CMakeLists.txt"
           $content = Get-Content $cmakePath
           
-          # 1. Limpieza de módulos basura
           $content = $content -replace 'add_subdirectory\(editor\)', '# Editor OFF'
           $content = $content -replace 'find_package\(FMOD REQUIRED\)', '# FMOD OFF'
           $content = $content -replace 'find_package\(FMOD\)', '# FMOD OFF'
           
-          # 2. Inyectar Paths y Definiciones (ELIMINAMOS GLEW_STATIC)
-          # Usamos find_package para que vcpkg maneje la decoración de símbolos automáticamente
           $content = $content -replace 'project\(barony\)', "project(barony)`nfind_package(GLEW REQUIRED)`ninclude_directories(`"$vcpkgInclude`")`nadd_definitions(-DNOMINMAX -D_CRT_SECURE_NO_WARNINGS -DWIN32)"
           
-          # 3. Enlace vía Target de CMake (Más robusto que rutas a .lib)
-          # GLEW::GLEW es el target oficial que vcpkg configura correctamente
+          # Enlace Dinámico
           $content = $content -replace 'target_link_libraries\(barony', "target_link_libraries(barony GLEW::GLEW "
           
           $content | Set-Content $cmakePath
 
-          # 4. Parches de código (Fiabilidad 100% - Ya compilaron)
           Get-ChildItem -Path "src" -Filter "*.hpp" -Recurse | ForEach-Object {
               $txt = [IO.File]::ReadAllText($_.FullName)
               if ($txt -match "struct\s+StatusEffectQueue_t") {
@@ -50,7 +45,7 @@ jobs:
           }
           Add-Content -Path "src/main.hpp" -Value "`n#ifdef GetObject`n#undef GetObject`n#endif"
 
-      - name: Configure CMake (Win32)
+      - name: Configure CMake (Win32 Dynamic)
         run: |
           cmake -B build -A Win32 `
           -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" `
@@ -65,8 +60,18 @@ jobs:
       - name: Build Project
         run: cmake --build build --config Release --target barony
 
+      - name: Collect Dependencies (DLLs)
+        shell: pwsh
+        run: |
+          $binDir = "$env:VCPKG_INSTALLATION_ROOT/installed/x86-windows/bin"
+          $outDir = "build/Release"
+          Write-Host "Collecting DLLs from $binDir to $outDir"
+          Copy-Item "$binDir/*.dll" -Destination $outDir -Force
+          # Verificamos que glew32.dll esté ahí
+          if (Test-Path "$outDir/glew32.dll") { Write-Host "glew32.dll successfully collected." }
+
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: barony-15p-epic-exe
-          path: build/Release/barony.exe
+          name: barony-15p-epic-suite
+          path: build/Release/
