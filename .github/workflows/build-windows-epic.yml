@@ -12,7 +12,7 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # --- CACHE DE VCPKG (Ahorra tiempo desde el 2do run) ---
+      # --- ACELERACIÓN DE BUILD: Cache de vcpkg ---
       - name: Export GitHub Actions Cache Env
         uses: actions/github-script@v7
         with:
@@ -32,6 +32,7 @@ jobs:
           
           # Localización del SDK
           $eosLibFile = Get-ChildItem -Path "deps" -Filter "EOSSDK-Win64-Shipping.lib" -Recurse | Select-Object -First 1
+          if (-not $eosLibFile) { Write-Error "EOSSDK-Win64-Shipping.lib no encontrado."; exit 1 }
           $eosLibPath = $eosLibFile.FullName.Replace('\', '/')
           $eosInclude = "$pwd/deps/eos/include".Replace('\', '/')
           
@@ -43,15 +44,25 @@ jobs:
           $eosMacros = "-DPRODUCT_ID=\`"$eProdID\`" -DSANDBOX_ID=\`"$eSandID\`" -DDEPLOYMENT_ID=\`"$eDeplID\`" -DCLIENT_ID=\`"$eClieID\`""
           
           $cmakePath = "CMakeLists.txt"
-          # Corregido: Get-Content
           $content = Get-Content $cmakePath
           
-          # Inyecciones críticas
+          # 1. Inyectamos macros y carpetas de inclusión
           $content = $content -replace 'project\(barony\)', "project(barony)`ninclude_directories(`"$vcpkgInclude`")`ninclude_directories(`"$eosInclude`")`nadd_definitions(-DNOMINMAX -D_CRT_SECURE_NO_WARNINGS -DWIN64 -DEGP -DUSE_EOS -D__STDC_FORMAT_MACROS $eosMacros)"
-          $content = $content -replace 'target_link_libraries\(barony', "target_link_libraries(barony `"$eosLibPath`" "
+          
+          # 2. Configuración del Linker (Reemplazamos el linkeo de Win32 que es para Mingw)
+          $glewLibFile = Get-ChildItem -Path "$vcpkgLib/glew32*.lib" | Select-Object -First 1 -ExpandProperty Name
+          $libs = "`"$vcpkgLib/$glewLibFile`" `"$eosLibPath`" `"$vcpkgLib/physfs.lib`" `"$vcpkgLib/SDL2.lib`" `"$vcpkgLib/SDL2_image.lib`" `"$vcpkgLib/SDL2_net.lib`" `"$vcpkgLib/SDL2_ttf.lib`" `"$vcpkgLib/jsoncpp.lib`" Opengl32.lib Glu32.lib Advapi32.lib User32.lib Gdi32.lib Shell32.lib Ole32.lib Ws2_32.lib Crypt32.lib"
+          $content = $content -replace 'target_link_libraries\(barony', "target_link_libraries(barony $libs "
+          
+          # 3. Limpieza de flags
+          $content = $content -replace '-lm', ''
+          $content = $content -replace '-lc', ''
+          $content = $content -replace '(?i)find_package\s*\(\s*FMOD', '# FMOD OFF'
+          $content = $content -replace '(?i)add_subdirectory\s*\(\s*editor', '# Editor OFF'
+          
           $content | Set-Content $cmakePath
 
-          # Parches de código x64 (SavePNG y Lambdas)
+          # 4. Parches de código (Críticos para x64)
           if (Test-Path "src/savepng.cpp") {
               $pngTxt = [IO.File]::ReadAllText("src/savepng.cpp")
               $pngTxt = $pngTxt -replace 'png_set_rows\(png_ptr, info_ptr, row_pointers\)', 'png_set_rows(png_ptr, info_ptr, (png_bytepp)row_pointers)'
@@ -84,5 +95,5 @@ jobs:
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: barony-15p-x64-FINAL
+          name: barony-15p-x64-ONLINE
           path: build/Release/

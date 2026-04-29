@@ -33,7 +33,6 @@ if (NOT DEFINED EOS_ENABLED)
 	if (EOS)
 		set (EOS_ENABLED 1)
 	endif()
-    # Bypass de validaciones EOS
 	set(BUILD_ENV_PR "1" CACHE STRING "EOS product id")
 	set(BUILD_ENV_SA "1" CACHE STRING "EOS sandbox")
 	set(BUILD_ENV_DE "1" CACHE STRING "EOS deployment")
@@ -96,7 +95,6 @@ if (PLAYFAB_ENABLED AND NOT CURL_ENABLED)
 	message(FATAL_ERROR "CURL must be enabled if PlayFab is enabled.")
 endif()
 
-# Validaciones de entorno (Ahora pasarán porque valen "1")
 if (DEFINED ENV{BUILD_ENV_PR} AND NOT DEFINED BUILD_ENV_PR)
 	set (BUILD_ENV_PR $ENV{BUILD_ENV_PR})
 endif()
@@ -151,7 +149,6 @@ else()
 	set (GAME_ENABLED 1)
 endif()
 
-# Forzamos OpenAL para vcpkg
 set(FMOD_ENABLED OFF)
 set(OPENAL_ENABLED ON)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
