@@ -253,6 +253,16 @@ EOS_ENUM(EOS_EComparisonOp,
 typedef EOS_EComparisonOp EOS_EOnlineComparisonOp;
 
 /**
+ * The EOS Logical Combine Operator.
+ */
+EOS_ENUM(EOS_ELogicalCombineOp,
+	/** The AND operator used to logically combine comparison operations. */
+	EOS_LCO_AND,
+	/** The OR operator used to logically combine comparison operations. */
+	EOS_LCO_OR
+);
+
+/**
  * All supported external account providers
  *
  * @see EOS_Connect_QueryExternalAccountMappings

@@ -24,8 +24,9 @@
  * @param ClientData Arbitrary data that is passed back to you in the CompletionDelegate
  * @param CompletionDelegate A callback that is fired when the create operation completes, either successfully or in error
  *
- * @see EOS_Lobby_CreateLobbyOptions
- * @see EOS_Lobby_OnCreateLobbyCallback
+ * @return EOS_Success if the creation completes successfully
+ *         EOS_InvalidParameters if any of the options are incorrect
+ *         EOS_LimitExceeded if the number of allowed lobbies is exceeded
  */
 EOS_DECLARE_FUNC(void) EOS_Lobby_CreateLobby(EOS_HLobby Handle, const EOS_Lobby_CreateLobbyOptions* Options, void* ClientData, const EOS_Lobby_OnCreateLobbyCallback CompletionDelegate);
 
@@ -36,8 +37,10 @@ EOS_DECLARE_FUNC(void) EOS_Lobby_CreateLobby(EOS_HLobby Handle, const EOS_Lobby_
  * @param ClientData Arbitrary data that is passed back to you in the CompletionDelegate
  * @param CompletionDelegate A callback that is fired when the destroy operation completes, either successfully or in error
  *
- * @see EOS_Lobby_DestroyLobbyOptions
- * @see EOS_Lobby_OnDestroyLobbyCallback
+ * @return EOS_Success if the destroy completes successfully
+ *         EOS_InvalidParameters if any of the options are incorrect
+ *         EOS_AlreadyPending if the lobby is already marked for destroy
+ *         EOS_NotFound if the lobby to be destroyed does not exist
  */
 EOS_DECLARE_FUNC(void) EOS_Lobby_DestroyLobby(EOS_HLobby Handle, const EOS_Lobby_DestroyLobbyOptions* Options, void* ClientData, const EOS_Lobby_OnDestroyLobbyCallback CompletionDelegate);
 
@@ -53,8 +56,8 @@ EOS_DECLARE_FUNC(void) EOS_Lobby_DestroyLobby(EOS_HLobby Handle, const EOS_Lobby
  * @param ClientData Arbitrary data that is passed back to you in the CompletionDelegate
  * @param CompletionDelegate A callback that is fired when the join operation completes, either successfully or in error
  *
- * @see EOS_Lobby_JoinLobbyOptions
- * @see EOS_Lobby_OnJoinLobbyCallback
+ * @return EOS_Success if the destroy completes successfully
+ *         EOS_InvalidParameters if any of the options are incorrect
  */
 EOS_DECLARE_FUNC(void) EOS_Lobby_JoinLobby(EOS_HLobby Handle, const EOS_Lobby_JoinLobbyOptions* Options, void* ClientData, const EOS_Lobby_OnJoinLobbyCallback CompletionDelegate);
 
@@ -66,8 +69,9 @@ EOS_DECLARE_FUNC(void) EOS_Lobby_JoinLobby(EOS_HLobby Handle, const EOS_Lobby_Jo
  * @param ClientData Arbitrary data that is passed back to you in the CompletionDelegate
  * @param CompletionDelegate A callback that is fired when the join operation completes, either successfully or in error
  *
- * @see EOS_Lobby_JoinLobbyByIdOptions
- * @see EOS_Lobby_OnJoinLobbyByIdCallback
+ * @return EOS_Success if the destroy completes successfully
+ *         EOS_InvalidParameters if any of the options are incorrect
+ *
  * @see EOS_Lobby_JoinLobby
  */
 EOS_DECLARE_FUNC(void) EOS_Lobby_JoinLobbyById(EOS_HLobby Handle, const EOS_Lobby_JoinLobbyByIdOptions* Options, void* ClientData, const EOS_Lobby_OnJoinLobbyByIdCallback CompletionDelegate);
@@ -81,8 +85,10 @@ EOS_DECLARE_FUNC(void) EOS_Lobby_JoinLobbyById(EOS_HLobby Handle, const EOS_Lobb
  * @param ClientData Arbitrary data that is passed back to you in the CompletionDelegate
  * @param CompletionDelegate A callback that is fired when the leave operation completes, either successfully or in error
  *
- * @see EOS_Lobby_LeaveLobbyOptions
- * @see EOS_Lobby_OnLeaveLobbyCallback
+ * @return EOS_Success if the leave completes successfully
+ *         EOS_InvalidParameters if any of the options are incorrect
+ *         EOS_AlreadyPending if the lobby is already marked for leave
+ *         EOS_NotFound if a lobby to be left does not exist
  */
 EOS_DECLARE_FUNC(void) EOS_Lobby_LeaveLobby(EOS_HLobby Handle, const EOS_Lobby_LeaveLobbyOptions* Options, void* ClientData, const EOS_Lobby_OnLeaveLobbyCallback CompletionDelegate);
 
@@ -92,14 +98,11 @@ EOS_DECLARE_FUNC(void) EOS_Lobby_LeaveLobby(EOS_HLobby Handle, const EOS_Lobby_L
  *
  * @param Options Required fields such as lobby ID
  * @param OutLobbyModificationHandle Pointer to a Lobby Modification Handle only set if successful
- * @return EOS_EResult containing the result of the operation.
- * Possible result codes:
- * - EOS_Success if we successfully created the Lobby Modification Handle pointed at in OutLobbyModificationHandle, or an error result if the input data was invalid
- * - EOS_InvalidParameters if any of the options are incorrect
+ * @return EOS_Success if we successfully created the Lobby Modification Handle pointed at in OutLobbyModificationHandle, or an error result if the input data was invalid
+ *		   EOS_InvalidParameters if any of the options are incorrect
  *
  * @see EOS_LobbyModification_Release
  * @see EOS_Lobby_UpdateLobby
- * @see EOS_Lobby_UpdateLobbyModificationOptions
  * @see EOS_HLobbyModification
  */
 EOS_DECLARE_FUNC(EOS_EResult) EOS_Lobby_UpdateLobbyModification(EOS_HLobby Handle, const EOS_Lobby_UpdateLobbyModificationOptions* Options, EOS_HLobbyModification* OutLobbyModificationHandle);
@@ -111,8 +114,10 @@ EOS_DECLARE_FUNC(EOS_EResult) EOS_Lobby_UpdateLobbyModification(EOS_HLobby Handl
  * @param ClientData Arbitrary data that is passed back to you in the CompletionDelegate
  * @param CompletionDelegate A callback that is fired when the update operation completes, either successfully or in error
  *
- * @see EOS_Lobby_UpdateLobbyOptions
- * @see EOS_Lobby_OnUpdateLobbyCallback
+ * @return EOS_Success if the update completes successfully
+ *         EOS_InvalidParameters if any of the options are incorrect
+ *         EOS_Lobby_NotOwner if the lobby modification contains modifications that are only allowed by the owner
+ *         EOS_NotFound if the lobby to update does not exist
  */
 EOS_DECLARE_FUNC(void) EOS_Lobby_UpdateLobby(EOS_HLobby Handle, const EOS_Lobby_UpdateLobbyOptions* Options, void* ClientData, const EOS_Lobby_OnUpdateLobbyCallback CompletionDelegate);
 
@@ -123,8 +128,10 @@ EOS_DECLARE_FUNC(void) EOS_Lobby_UpdateLobby(EOS_HLobby Handle, const EOS_Lobby_
  * @param ClientData Arbitrary data that is passed back to you in the CompletionDelegate
  * @param CompletionDelegate A callback that is fired when the promotion operation completes, either successfully or in error
  *
- * @see EOS_Lobby_PromoteMemberOptions
- * @see EOS_Lobby_OnPromoteMemberCallback
+ * @return EOS_Success if the promote completes successfully
+ *         EOS_InvalidParameters if any of the options are incorrect
+ *         EOS_Lobby_NotOwner if the calling user is not the owner of the lobby
+ *         EOS_NotFound if the lobby of interest does not exist
  */
 EOS_DECLARE_FUNC(void) EOS_Lobby_PromoteMember(EOS_HLobby Handle, const EOS_Lobby_PromoteMemberOptions* Options, void* ClientData, const EOS_Lobby_OnPromoteMemberCallback CompletionDelegate);
 
@@ -135,8 +142,10 @@ EOS_DECLARE_FUNC(void) EOS_Lobby_PromoteMember(EOS_HLobby Handle, const EOS_Lobb
  * @param ClientData Arbitrary data that is passed back to you in the CompletionDelegate
  * @param CompletionDelegate A callback that is fired when the kick operation completes, either successfully or in error
  *
- * @see EOS_Lobby_KickMemberOptions
- * @see EOS_Lobby_OnKickMemberCallback
+ * @return EOS_Success if the kick completes successfully
+ *         EOS_InvalidParameters if any of the options are incorrect
+ *         EOS_Lobby_NotOwner if the calling user is not the owner of the lobby
+ *         EOS_NotFound if a lobby of interest does not exist
  */
 EOS_DECLARE_FUNC(void) EOS_Lobby_KickMember(EOS_HLobby Handle, const EOS_Lobby_KickMemberOptions* Options, void* ClientData, const EOS_Lobby_OnKickMemberCallback CompletionDelegate);
 
@@ -147,8 +156,16 @@ EOS_DECLARE_FUNC(void) EOS_Lobby_KickMember(EOS_HLobby Handle, const EOS_Lobby_K
  * @param ClientData Arbitrary data that is passed back to you in the CompletionDelegate
  * @param CompletionDelegate A callback that is fired when the hard mute operation completes, either successfully or in error
  *
- * @see EOS_Lobby_HardMuteMemberOptions
- * @see EOS_Lobby_OnHardMuteMemberCallback
+ * @return EOS_Success if the hard mute completes successfully
+ *         EOS_IncompatibleVersion if the API version passed in is incorrect
+ *         EOS_InvalidParameters if any of the options are incorrect
+ *         EOS_Invalid_ProductUserID if a target user is incorrect
+ *         EOS_NotFound if lobby or target user cannot be found
+ *         EOS_Lobby_VoiceNotEnabled if lobby has no voice enabled
+ *         EOS_Lobby_NotOwner if the calling user is not the owner of the lobby
+ *         EOS_NotFound if a lobby of interest does not exist
+ *         EOS_AlreadyPending if the user is already marked for hard mute
+ *         EOS_TooManyRequests if there are too many requests
  */
 EOS_DECLARE_FUNC(void) EOS_Lobby_HardMuteMember(EOS_HLobby Handle, const EOS_Lobby_HardMuteMemberOptions* Options, void* ClientData, const EOS_Lobby_OnHardMuteMemberCallback CompletionDelegate);
 
@@ -161,9 +178,6 @@ EOS_DECLARE_FUNC(void) EOS_Lobby_HardMuteMember(EOS_HLobby Handle, const EOS_Lob
  * @param NotificationFn A callback that is fired when a a notification is received.
  *
  * @return handle representing the registered callback
- *
- * @see EOS_Lobby_AddNotifyLobbyUpdateReceivedOptions
- * @see EOS_Lobby_OnLobbyUpdateReceivedCallback
  */
 EOS_DECLARE_FUNC(EOS_NotificationId) EOS_Lobby_AddNotifyLobbyUpdateReceived(EOS_HLobby Handle, const EOS_Lobby_AddNotifyLobbyUpdateReceivedOptions* Options, void* ClientData, const EOS_Lobby_OnLobbyUpdateReceivedCallback NotificationFn);
 
@@ -183,9 +197,6 @@ EOS_DECLARE_FUNC(void) EOS_Lobby_RemoveNotifyLobbyUpdateReceived(EOS_HLobby Hand
  * @param NotificationFn A callback that is fired when a a notification is received.
  *
  * @return handle representing the registered callback
- *
- * @see EOS_Lobby_AddNotifyLobbyMemberUpdateReceivedOptions
- * @see EOS_Lobby_OnLobbyMemberUpdateReceivedCallback
  */
 EOS_DECLARE_FUNC(EOS_NotificationId) EOS_Lobby_AddNotifyLobbyMemberUpdateReceived(EOS_HLobby Handle, const EOS_Lobby_AddNotifyLobbyMemberUpdateReceivedOptions* Options, void* ClientData, const EOS_Lobby_OnLobbyMemberUpdateReceivedCallback NotificationFn);
 
@@ -205,9 +216,6 @@ EOS_DECLARE_FUNC(void) EOS_Lobby_RemoveNotifyLobbyMemberUpdateReceived(EOS_HLobb
  * @param NotificationFn A callback that is fired when a a notification is received.
  *
  * @return handle representing the registered callback
- *
- * @see EOS_Lobby_AddNotifyLobbyMemberStatusReceivedOptions
- * @see EOS_Lobby_OnLobbyMemberStatusReceivedCallback
  */
 EOS_DECLARE_FUNC(EOS_NotificationId) EOS_Lobby_AddNotifyLobbyMemberStatusReceived(EOS_HLobby Handle, const EOS_Lobby_AddNotifyLobbyMemberStatusReceivedOptions* Options, void* ClientData, const EOS_Lobby_OnLobbyMemberStatusReceivedCallback NotificationFn);
 
@@ -225,8 +233,9 @@ EOS_DECLARE_FUNC(void) EOS_Lobby_RemoveNotifyLobbyMemberStatusReceived(EOS_HLobb
  * @param ClientData Arbitrary data that is passed back to you in the CompletionDelegate
  * @param CompletionDelegate A callback that is fired when the send invite operation completes, either successfully or in error
  *
- * @see EOS_Lobby_SendInviteOptions
- * @see EOS_Lobby_OnSendInviteCallback
+ * @return EOS_Success if the send invite completes successfully
+ *         EOS_InvalidParameters if any of the options are incorrect
+ *         EOS_NotFound if the lobby to send the invite from does not exist
  */
 EOS_DECLARE_FUNC(void) EOS_Lobby_SendInvite(EOS_HLobby Handle, const EOS_Lobby_SendInviteOptions* Options, void* ClientData, const EOS_Lobby_OnSendInviteCallback CompletionDelegate);
 
@@ -237,8 +246,9 @@ EOS_DECLARE_FUNC(void) EOS_Lobby_SendInvite(EOS_HLobby Handle, const EOS_Lobby_S
  * @param ClientData Arbitrary data that is passed back to you in the CompletionDelegate
  * @param CompletionDelegate A callback that is fired when the reject invite operation completes, either successfully or in error
  *
- * @see EOS_Lobby_RejectInviteOptions
- * @see EOS_Lobby_OnRejectInviteCallback
+ * @return EOS_Success if the invite rejection completes successfully
+ *         EOS_InvalidParameters if any of the options are incorrect
+ *         EOS_NotFound if the invite does not exist
  */
 EOS_DECLARE_FUNC(void) EOS_Lobby_RejectInvite(EOS_HLobby Handle, const EOS_Lobby_RejectInviteOptions* Options, void* ClientData, const EOS_Lobby_OnRejectInviteCallback CompletionDelegate);
 
@@ -249,8 +259,6 @@ EOS_DECLARE_FUNC(void) EOS_Lobby_RejectInvite(EOS_HLobby Handle, const EOS_Lobby
  * @param ClientData Arbitrary data that is passed back to you in the CompletionDelegate
  * @param CompletionDelegate A callback that is fired when the query invites operation completes, either successfully or in error
  *
- * @see EOS_Lobby_QueryInvitesOptions
- * @see EOS_Lobby_OnQueryInvitesCallback
  */
 EOS_DECLARE_FUNC(void) EOS_Lobby_QueryInvites(EOS_HLobby Handle, const EOS_Lobby_QueryInvitesOptions* Options, void* ClientData, const EOS_Lobby_OnQueryInvitesCallback CompletionDelegate);
 
@@ -260,8 +268,6 @@ EOS_DECLARE_FUNC(void) EOS_Lobby_QueryInvites(EOS_HLobby Handle, const EOS_Lobby
  * @param Options the Options associated with retrieving the current invite count
  *
  * @return number of known invites for a given user or 0 if there is an error
- *
- * @see EOS_Lobby_GetInviteCountOptions
  */
 EOS_DECLARE_FUNC(uint32_t) EOS_Lobby_GetInviteCount(EOS_HLobby Handle, const EOS_Lobby_GetInviteCountOptions* Options);
 
@@ -270,16 +276,12 @@ EOS_DECLARE_FUNC(uint32_t) EOS_Lobby_GetInviteCount(EOS_HLobby Handle, const EOS
  *
  * @param Options Structure containing the input parameters
  *
- * @return EOS_EResult containing the result of the operation.
- * Possible result codes:
- * - EOS_Success if the input is valid and an invite ID was returned
- * - EOS_InvalidParameters if any of the options are incorrect
- * - EOS_NotFound if the invite doesn't exist
+ * @return EOS_Success if the input is valid and an invite ID was returned
+ *         EOS_InvalidParameters if any of the options are incorrect
+ *         EOS_NotFound if the invite doesn't exist
  *
  * @see EOS_Lobby_GetInviteCount
  * @see EOS_Lobby_CopyLobbyDetailsHandleByInviteId
- *
- * @see EOS_Lobby_GetInviteIdByIndexOptions
  */
 EOS_DECLARE_FUNC(EOS_EResult) EOS_Lobby_GetInviteIdByIndex(EOS_HLobby Handle, const EOS_Lobby_GetInviteIdByIndexOptions* Options, char* OutBuffer, int32_t* InOutBufferLength);
 
@@ -293,13 +295,8 @@ EOS_DECLARE_FUNC(EOS_EResult) EOS_Lobby_GetInviteIdByIndex(EOS_HLobby Handle, co
  * @param Options Structure containing required parameters such as the maximum number of search results
  * @param OutLobbySearchHandle The new search handle or null if there was an error creating the search handle
  *
- * @return EOS_EResult containing the result of the operation.
- * Possible result codes:
- * - EOS_Success if the search creation completes successfully
- * - EOS_InvalidParameters if any of the options are incorrect
- *
- * @see EOS_Lobby_CreateLobbySearchOptions
- * @see EOS_HLobbySearch
+ * @return EOS_Success if the search creation completes successfully
+ *         EOS_InvalidParameters if any of the options are incorrect
  */
 EOS_DECLARE_FUNC(EOS_EResult) EOS_Lobby_CreateLobbySearch(EOS_HLobby Handle, const EOS_Lobby_CreateLobbySearchOptions* Options, EOS_HLobbySearch* OutLobbySearchHandle);
 
@@ -312,9 +309,6 @@ EOS_DECLARE_FUNC(EOS_EResult) EOS_Lobby_CreateLobbySearch(EOS_HLobby Handle, con
  * @param NotificationFn A callback that is fired when a a notification is received.
  *
  * @return handle representing the registered callback
- *
- * @see EOS_Lobby_AddNotifyLobbyInviteReceivedOptions
- * @see EOS_Lobby_OnLobbyInviteReceivedCallback
  */
 EOS_DECLARE_FUNC(EOS_NotificationId) EOS_Lobby_AddNotifyLobbyInviteReceived(EOS_HLobby Handle, const EOS_Lobby_AddNotifyLobbyInviteReceivedOptions* Options, void* ClientData, const EOS_Lobby_OnLobbyInviteReceivedCallback NotificationFn);
 
@@ -334,9 +328,6 @@ EOS_DECLARE_FUNC(void) EOS_Lobby_RemoveNotifyLobbyInviteReceived(EOS_HLobby Hand
  * @param NotificationFn A callback that is fired when a a notification is received.
  *
  * @return handle representing the registered callback
- *
- * @see EOS_Lobby_AddNotifyLobbyInviteAcceptedOptions
- * @see EOS_Lobby_OnLobbyInviteAcceptedCallback
  */
 EOS_DECLARE_FUNC(EOS_NotificationId) EOS_Lobby_AddNotifyLobbyInviteAccepted(EOS_HLobby Handle, const EOS_Lobby_AddNotifyLobbyInviteAcceptedOptions* Options, void* ClientData, const EOS_Lobby_OnLobbyInviteAcceptedCallback NotificationFn);
 
@@ -356,9 +347,6 @@ EOS_DECLARE_FUNC(void) EOS_Lobby_RemoveNotifyLobbyInviteAccepted(EOS_HLobby Hand
  * @param NotificationFn A callback that is fired when a a notification is received.
  *
  * @return handle representing the registered callback
- *
- * @see EOS_Lobby_AddNotifyLobbyInviteRejectedOptions
- * @see EOS_Lobby_OnLobbyInviteRejectedCallback
  */
 EOS_DECLARE_FUNC(EOS_NotificationId) EOS_Lobby_AddNotifyLobbyInviteRejected(EOS_HLobby Handle, const EOS_Lobby_AddNotifyLobbyInviteRejectedOptions* Options, void* ClientData, const EOS_Lobby_OnLobbyInviteRejectedCallback NotificationFn);
 
@@ -378,9 +366,6 @@ EOS_DECLARE_FUNC(void) EOS_Lobby_RemoveNotifyLobbyInviteRejected(EOS_HLobby Hand
  * @param NotificationFn A callback that is fired when a notification is received.
  *
  * @return handle representing the registered callback
- *
- * @see EOS_Lobby_AddNotifyJoinLobbyAcceptedOptions
- * @see EOS_Lobby_OnJoinLobbyAcceptedCallback
  */
 EOS_DECLARE_FUNC(EOS_NotificationId) EOS_Lobby_AddNotifyJoinLobbyAccepted(EOS_HLobby Handle, const EOS_Lobby_AddNotifyJoinLobbyAcceptedOptions* Options, void* ClientData, const EOS_Lobby_OnJoinLobbyAcceptedCallback NotificationFn);
 
@@ -408,9 +393,6 @@ EOS_DECLARE_FUNC(void) EOS_Lobby_RemoveNotifyJoinLobbyAccepted(EOS_HLobby Handle
  * @see EOS_IPMF_DisableSDKManagedSessions
  * @see EOS_IPMF_PreferEOSIdentity
  * @see EOS_IPMF_PreferIntegratedIdentity
- *
- * @see EOS_Lobby_AddNotifySendLobbyNativeInviteRequestedOptions
- * @see EOS_Lobby_OnSendLobbyNativeInviteRequestedCallback
  */
 EOS_DECLARE_FUNC(EOS_NotificationId) EOS_Lobby_AddNotifySendLobbyNativeInviteRequested(EOS_HLobby Handle, const EOS_Lobby_AddNotifySendLobbyNativeInviteRequestedOptions* Options, void* ClientData, const EOS_Lobby_OnSendLobbyNativeInviteRequestedCallback NotificationFn);
 
@@ -428,35 +410,29 @@ EOS_DECLARE_FUNC(void) EOS_Lobby_RemoveNotifySendLobbyNativeInviteRequested(EOS_
  * @param Options Structure containing the input parameters
  * @param OutLobbyDetailsHandle out parameter used to receive the lobby handle
  *
- * @return EOS_EResult containing the result of the operation.
- * Possible result codes:
- * - EOS_Success if the information is available and passed out in OutLobbyDetailsHandle
- * - EOS_InvalidParameters if you pass an invalid invite ID or a null pointer for the out parameter
- * - EOS_IncompatibleVersion if the API version passed in is incorrect
- * - EOS_NotFound If the invite ID cannot be found
+ * @return EOS_Success if the information is available and passed out in OutLobbyDetailsHandle
+ *         EOS_InvalidParameters if you pass an invalid invite ID or a null pointer for the out parameter
+ *         EOS_IncompatibleVersion if the API version passed in is incorrect
+ *         EOS_NotFound If the invite ID cannot be found
  *
  * @see EOS_Lobby_CopyLobbyDetailsHandleByInviteIdOptions
- * @see EOS_HLobbyDetails
  * @see EOS_LobbyDetails_Release
  */
 EOS_DECLARE_FUNC(EOS_EResult) EOS_Lobby_CopyLobbyDetailsHandleByInviteId(EOS_HLobby Handle, const EOS_Lobby_CopyLobbyDetailsHandleByInviteIdOptions* Options, EOS_HLobbyDetails* OutLobbyDetailsHandle);
 
 /**
- * EOS_Lobby_CopyLobbyDetailsHandleByUiEventId is used to immediately retrieve a handle to the lobby information from after notification of a join game
+ * EOS_Lobby_CopyLobbyDetailsHandleByUiEventId is used to immediately retrieve a handle to the lobby information from after notification of an join game
  * If the call returns an EOS_Success result, the out parameter, OutLobbyDetailsHandle, must be passed to EOS_LobbyDetails_Release to release the memory associated with it.
  *
  * @param Options Structure containing the input parameters
  * @param OutLobbyDetailsHandle out parameter used to receive the lobby handle
  *
- * @return EOS_EResult containing the result of the operation.
- * Possible result codes:
- * - EOS_Success if the information is available and passed out in OutLobbyDetailsHandle
- * - EOS_InvalidParameters if you pass an invalid ui event ID
- * - EOS_IncompatibleVersion if the API version passed in is incorrect
- * - EOS_NotFound If the invite ID cannot be found
+ * @return EOS_Success if the information is available and passed out in OutLobbyDetailsHandle
+ *         EOS_InvalidParameters if you pass an invalid ui event ID
+ *         EOS_IncompatibleVersion if the API version passed in is incorrect
+ *         EOS_NotFound If the invite ID cannot be found
  *
  * @see EOS_Lobby_CopyLobbyDetailsHandleByUiEventIdOptions
- * @see EOS_HLobbyDetails
  * @see EOS_LobbyDetails_Release
  */
 EOS_DECLARE_FUNC(EOS_EResult) EOS_Lobby_CopyLobbyDetailsHandleByUiEventId(EOS_HLobby Handle, const EOS_Lobby_CopyLobbyDetailsHandleByUiEventIdOptions* Options, EOS_HLobbyDetails* OutLobbyDetailsHandle);
@@ -468,15 +444,10 @@ EOS_DECLARE_FUNC(EOS_EResult) EOS_Lobby_CopyLobbyDetailsHandleByUiEventId(EOS_HL
  * @param Options Structure containing information about the lobby to retrieve
  * @param OutLobbyDetailsHandle The new active lobby handle or null if there was an error
  *
- * @return EOS_EResult containing the result of the operation.
- * Possible result codes:
- * - EOS_Success if the lobby handle was created successfully
- * - EOS_InvalidParameters if any of the options are incorrect
- * - EOS_IncompatibleVersion if the API version passed in is incorrect
- * - EOS_NotFound if the lobby doesn't exist
- *
- * @see EOS_Lobby_CopyLobbyDetailsHandleOptions
- * @see EOS_HLobbyDetails
+ * @return EOS_Success if the lobby handle was created successfully
+ *         EOS_InvalidParameters if any of the options are incorrect
+ *         EOS_IncompatibleVersion if the API version passed in is incorrect
+ *         EOS_NotFound if the lobby doesn't exist
  */
 EOS_DECLARE_FUNC(EOS_EResult) EOS_Lobby_CopyLobbyDetailsHandle(EOS_HLobby Handle, const EOS_Lobby_CopyLobbyDetailsHandleOptions* Options, EOS_HLobbyDetails* OutLobbyDetailsHandle);
 
@@ -493,15 +464,11 @@ EOS_DECLARE_FUNC(EOS_EResult) EOS_Lobby_CopyLobbyDetailsHandle(EOS_HLobby Handle
  * @param OutBuffer The buffer to store the null-terminated room name string within
  * @param InOutBufferLength In: The maximum amount of writable chars in OutBuffer, Out: The minimum amount of chars needed in OutBuffer to store the RTC room name (including the null-terminator)
  *
- * @return EOS_EResult containing the result of the operation.
- * Possible result codes:
- * - EOS_Success if a room exists for the specified lobby, there was enough space in OutBuffer, and the name was written successfully
- * - EOS_NotFound if the lobby does not exist
- * - EOS_Disabled if the lobby exists, but did not have the RTC Room feature enabled when created
- * - EOS_InvalidParameters if you pass a null pointer on invalid length for any of the parameters
- * - EOS_LimitExceeded The OutBuffer is not large enough to receive the room name. InOutBufferLength contains the required minimum length to perform the operation successfully.
- *
- * @see EOS_Lobby_GetRTCRoomNameOptions
+ * @return EOS_Success if a room exists for the specified lobby, there was enough space in OutBuffer, and the name was written successfully
+ *         EOS_NotFound if the lobby does not exist
+ *         EOS_Disabled if the lobby exists, but did not have the RTC Room feature enabled when created
+ *         EOS_InvalidParameters if you pass a null pointer on invalid length for any of the parameters
+ *         EOS_LimitExceeded The OutBuffer is not large enough to receive the room name. InOutBufferLength contains the required minimum length to perform the operation successfully.
  */
 EOS_DECLARE_FUNC(EOS_EResult) EOS_Lobby_GetRTCRoomName(EOS_HLobby Handle, const EOS_Lobby_GetRTCRoomNameOptions* Options, char* OutBuffer, uint32_t* InOutBufferLength);
 
@@ -515,8 +482,12 @@ EOS_DECLARE_FUNC(EOS_EResult) EOS_Lobby_GetRTCRoomName(EOS_HLobby Handle, const 
  * @param ClientData Arbitrary data that is passed back to you in the CompletionDelegate
  * @param CompletionDelegate A callback that is fired when the join RTC Room operation completes, either successfully or in error
  *
- * @see EOS_Lobby_JoinRTCRoomOptions
- * @see EOS_Lobby_OnJoinRTCRoomCallback
+ * @return EOS_Success if creation completes succesfully
+ *         EOS_NotFound if the lobby does not exist
+ *         EOS_Disabled if the lobby exists, but did not have the RTC Room feature enabled when created
+ *         EOS_InvalidParameters if you pass a null pointer on invalid length for any of the parameters
+ *         EOS_NoChange if call does not affect the state of the RTC Room
+ *         EOS_InvalidState if call to join is made when RTC Room state is not disconnected/disconnecting
  */
 EOS_DECLARE_FUNC(void) EOS_Lobby_JoinRTCRoom(EOS_HLobby Handle, const EOS_Lobby_JoinRTCRoomOptions* Options, void* ClientData, const EOS_Lobby_OnJoinRTCRoomCallback CompletionDelegate);
 
@@ -528,10 +499,12 @@ EOS_DECLARE_FUNC(void) EOS_Lobby_JoinRTCRoom(EOS_HLobby Handle, const EOS_Lobby_
  *
  * @param Options Structure containing information about which lobby a local user should leave the RTC Room for
  * @param ClientData Arbitrary data that is passed back to you in the CompletionDelegate
- * @param CompletionDelegate A callback that is fired when the leave RTC Room operation completes, either successfully or in error
- *
- * @see EOS_Lobby_LeaveRTCRoomOptions
- * @see EOS_Lobby_OnLeaveRTCRoomCallback
+ * @param CompletionDelegate A callback that is fired when the join RTC Room operation completes, either successfully or in error
+ * @return EOS_Success if creation completes succesfully
+ *         EOS_NotFound if the lobby does not exist
+ *         EOS_Disabled if the lobby exists, but did not have the RTC Room feature enabled when created
+ *         EOS_InvalidParameters if you pass a null pointer on invalid length for any of the parameters
+ *         EOS_NoChange if call does not affect the state of the RTC Room
  */
 EOS_DECLARE_FUNC(void) EOS_Lobby_LeaveRTCRoom(EOS_HLobby Handle, const EOS_Lobby_LeaveRTCRoomOptions* Options, void* ClientData, const EOS_Lobby_OnLeaveRTCRoomCallback CompletionDelegate);
 
@@ -547,15 +520,12 @@ EOS_DECLARE_FUNC(void) EOS_Lobby_LeaveRTCRoom(EOS_HLobby Handle, const EOS_Lobby
  * @param Options Structure containing information about the lobby to query the RTC Room connection status for
  * @param bOutIsConnected If the result is EOS_Success, this will be set to EOS_TRUE if we are connected, or EOS_FALSE if we are not yet connected.
  *
- * @return EOS_EResult containing the result of the operation.
- * Possible result codes:
- * - EOS_Success if we are connected to the specified lobby, the input options and parameters were valid and we were able to write to bOutIsConnected successfully.
- * - EOS_NotFound if the lobby doesn't exist
- * - EOS_Disabled if the lobby exists, but did not have the RTC Room feature enabled when created
- * - EOS_InvalidParameters if bOutIsConnected is NULL, or any other parameters are NULL or invalid
+ * @return EOS_Success if we are connected to the specified lobby, the input options and parameters were valid and we were able to write to bOutIsConnected successfully.
+ *         EOS_NotFound if the lobby doesn't exist
+ *         EOS_Disabled if the lobby exists, but did not have the RTC Room feature enabled when created
+ *         EOS_InvalidParameters if bOutIsConnected is NULL, or any other parameters are NULL or invalid
  *
  * @see EOS_Lobby_AddNotifyRTCRoomConnectionChanged
- * @see EOS_Lobby_IsRTCRoomConnectedOptions
  */
 EOS_DECLARE_FUNC(EOS_EResult) EOS_Lobby_IsRTCRoomConnected(EOS_HLobby Handle, const EOS_Lobby_IsRTCRoomConnectedOptions* Options, EOS_Bool* bOutIsConnected);
 
@@ -581,8 +551,6 @@ EOS_DECLARE_FUNC(EOS_EResult) EOS_Lobby_IsRTCRoomConnected(EOS_HLobby Handle, co
  * @return A valid notification ID if the NotificationFn was successfully registered, or EOS_INVALID_NOTIFICATIONID if the input was invalid, the lobby did not exist, or the lobby did not have an RTC room.
  *
  * @see EOS_Lobby_RemoveNotifyRTCRoomConnectionChanged
- * @see EOS_Lobby_AddNotifyRTCRoomConnectionChangedOptions
- * @see EOS_Lobby_OnRTCRoomConnectionChangedCallback
  */
 EOS_DECLARE_FUNC(EOS_NotificationId) EOS_Lobby_AddNotifyRTCRoomConnectionChanged(EOS_HLobby Handle, const EOS_Lobby_AddNotifyRTCRoomConnectionChangedOptions* Options, void* ClientData, const EOS_Lobby_OnRTCRoomConnectionChangedCallback NotificationFn);
 
@@ -606,15 +574,11 @@ EOS_DECLARE_FUNC(void) EOS_Lobby_RemoveNotifyRTCRoomConnectionChanged(EOS_HLobby
  * @param OutBuffer The buffer to store the null-terminated ConnectString within
  * @param InOutBufferLength In: The maximum amount of writable chars in OutBuffer see EOS_LOBBY_GETCONNECTSTRING_BUFFER_SIZE, Out: The minimum amount of chars needed in OutBuffer to store the ConnectString (including the null-terminator). May be set to zero depending on the error result.
  *
- * @return EOS_EResult containing the result of the operation.
- * Possible result codes:
- * - EOS_Success if retrieving the string was successful.
- * - EOS_InvalidParameters if the OutBuffer or InOutBufferLength are null.
- * - EOS_IncompatibleVersion if the API version passed in is incorrect.
- * - EOS_NotFound if no lobby is found matching the LobbyID and PUID provided.
- * - EOS_LimitExceeded if the provided InOutBufferLength is too small to contain the resulting string.
- *
- * @see EOS_Lobby_GetConnectStringOptions
+ * @return EOS_Success if retrieving the string was successful.
+ *         EOS_InvalidParameters if the OutBuffer or InOutBufferLength are null.
+ *         EOS_IncompatibleVersion if the API version passed in is incorrect.
+ *         EOS_NotFound if no lobby is found matching the LobbyID and PUID provided.
+ *         EOS_LimitExceeded if the provided InOutBufferLength is too small to contain the resulting string.
  */
 EOS_DECLARE_FUNC(EOS_EResult) EOS_Lobby_GetConnectString(EOS_HLobby Handle, const EOS_Lobby_GetConnectStringOptions* Options, char* OutBuffer, uint32_t* InOutBufferLength);
 
@@ -626,14 +590,10 @@ EOS_DECLARE_FUNC(EOS_EResult) EOS_Lobby_GetConnectString(EOS_HLobby Handle, cons
  * @param OutBuffer The buffer to store the null-terminated lobby ID within
  * @param InOutBufferLength In: The maximum amount of writable chars in OutBuffer see EOS_LOBBY_PARSECONNECTSTRING_BUFFER_SIZE, Out: The minimum amount of chars needed in OutBuffer to store the LobbyID (including the null-terminator). May be set to zero depending on the error result.
  *
- * @return EOS_EResult containing the result of the operation.
- * Possible result codes:
- * - EOS_Success if retrieving the string was successful.
- * - EOS_InvalidParameters if the OutBuffer or InOutBufferLength are null.
- * - EOS_IncompatibleVersion if the API version passed in is incorrect.
- * - EOS_LimitExceeded if the provided InOutBufferLength is too small to contain the resulting string.
- *
- * @see EOS_Lobby_ParseConnectStringOptions
+ * @return EOS_Success if retrieving the string was successful.
+ *         EOS_InvalidParameters if the OutBuffer or InOutBufferLength are null.
+ *         EOS_IncompatibleVersion if the API version passed in is incorrect.
+ *         EOS_LimitExceeded if the provided InOutBufferLength is too small to contain the resulting string.
  */
 EOS_DECLARE_FUNC(EOS_EResult) EOS_Lobby_ParseConnectString(EOS_HLobby Handle, const EOS_Lobby_ParseConnectStringOptions* Options, char* OutBuffer, uint32_t* InOutBufferLength);
 
@@ -647,9 +607,6 @@ EOS_DECLARE_FUNC(EOS_EResult) EOS_Lobby_ParseConnectString(EOS_HLobby Handle, co
  * @param NotificationFn A callback that is fired when a notification is received.
  *
  * @return handle representing the registered callback
- *
- * @see EOS_Lobby_AddNotifyLeaveLobbyRequestedOptions
- * @see EOS_Lobby_OnLeaveLobbyRequestedCallback
  */
 EOS_DECLARE_FUNC(EOS_NotificationId) EOS_Lobby_AddNotifyLeaveLobbyRequested(EOS_HLobby Handle, const EOS_Lobby_AddNotifyLeaveLobbyRequestedOptions* Options, void* ClientData, const EOS_Lobby_OnLeaveLobbyRequestedCallback NotificationFn);
 
@@ -673,13 +630,9 @@ EOS_DECLARE_FUNC(void) EOS_Lobby_RemoveNotifyLeaveLobbyRequested(EOS_HLobby Hand
  *
  * @param Options Options associated with the bucket ID of the lobby
  *
- * @return EOS_EResult containing the result of the operation.
- * Possible result codes:
- * - EOS_Success if setting this parameter was successful
- * - EOS_InvalidParameters if the bucket ID is invalid or null
- * - EOS_IncompatibleVersion if the API version passed in is incorrect
- *
- * @see EOS_LobbyModification_SetBucketIdOptions
+ * @return EOS_Success if setting this parameter was successful
+ *         EOS_InvalidParameters if the bucket ID is invalid or null
+ *         EOS_IncompatibleVersion if the API version passed in is incorrect
  */
 EOS_DECLARE_FUNC(EOS_EResult) EOS_LobbyModification_SetBucketId(EOS_HLobbyModification Handle, const EOS_LobbyModification_SetBucketIdOptions* Options);
 
@@ -689,12 +642,8 @@ EOS_DECLARE_FUNC(EOS_EResult) EOS_LobbyModification_SetBucketId(EOS_HLobbyModifi
  *
  * @param Options Options associated with the permission level of the lobby
  *
- * @return EOS_EResult containing the result of the operation.
- * Possible result codes:
- * - EOS_Success if setting this parameter was successful
- * - EOS_IncompatibleVersion if the API version passed in is incorrect
- *
- * @see EOS_LobbyModification_SetPermissionLevelOptions
+ * @return EOS_Success if setting this parameter was successful
+ *         EOS_IncompatibleVersion if the API version passed in is incorrect
  */
 EOS_DECLARE_FUNC(EOS_EResult) EOS_LobbyModification_SetPermissionLevel(EOS_HLobbyModification Handle, const EOS_LobbyModification_SetPermissionLevelOptions* Options);
 
@@ -704,12 +653,8 @@ EOS_DECLARE_FUNC(EOS_EResult) EOS_LobbyModification_SetPermissionLevel(EOS_HLobb
  *
  * @param Options Options associated with max number of members in this lobby
  *
- * @return EOS_EResult containing the result of the operation.
- * Possible result codes:
- * - EOS_Success if setting this parameter was successful
- * - EOS_IncompatibleVersion if the API version passed in is incorrect
- *
- * @see EOS_LobbyModification_SetMaxMembersOptions
+ * @return EOS_Success if setting this parameter was successful
+ *         EOS_IncompatibleVersion if the API version passed in is incorrect
  */
 EOS_DECLARE_FUNC(EOS_EResult) EOS_LobbyModification_SetMaxMembers(EOS_HLobbyModification Handle, const EOS_LobbyModification_SetMaxMembersOptions* Options);
 
@@ -719,12 +664,8 @@ EOS_DECLARE_FUNC(EOS_EResult) EOS_LobbyModification_SetMaxMembers(EOS_HLobbyModi
  *
  * @param Options Options associated with invites allowed flag for this lobby.
  *
- * @return EOS_EResult containing the result of the operation.
- * Possible result codes:
- * - EOS_Success if setting this parameter was successful
- * - EOS_IncompatibleVersion if the API version passed in is incorrect
- *
- * @see EOS_LobbyModification_SetInvitesAllowedOptions
+ * @return EOS_Success if setting this parameter was successful
+ *         EOS_IncompatibleVersion if the API version passed in is incorrect
  */
 EOS_DECLARE_FUNC(EOS_EResult) EOS_LobbyModification_SetInvitesAllowed(EOS_HLobbyModification Handle, const EOS_LobbyModification_SetInvitesAllowedOptions* Options);
 
@@ -735,13 +676,9 @@ EOS_DECLARE_FUNC(EOS_EResult) EOS_LobbyModification_SetInvitesAllowed(EOS_HLobby
  *
  * @param Options Options to set the attribute and its visibility state
  *
- * @return EOS_EResult containing the result of the operation.
- * Possible result codes:
- * - EOS_Success if setting this parameter was successful
- * - EOS_InvalidParameters if the attribute is missing information or otherwise invalid
- * - EOS_IncompatibleVersion if the API version passed in is incorrect
- *
- * @see EOS_LobbyModification_AddAttributeOptions
+ * @return EOS_Success if setting this parameter was successful
+ *		   EOS_InvalidParameters if the attribute is missing information or otherwise invalid
+ *         EOS_IncompatibleVersion if the API version passed in is incorrect
  */
 EOS_DECLARE_FUNC(EOS_EResult) EOS_LobbyModification_AddAttribute(EOS_HLobbyModification Handle, const EOS_LobbyModification_AddAttributeOptions* Options);
 
@@ -750,13 +687,9 @@ EOS_DECLARE_FUNC(EOS_EResult) EOS_LobbyModification_AddAttribute(EOS_HLobbyModif
  *
  * @param Options Specify the key of the attribute to remove
  *
- * @return EOS_EResult containing the result of the operation.
- * Possible result codes:
- * - EOS_Success if removing this parameter was successful
- * - EOS_InvalidParameters if the key is null or empty
- * - EOS_IncompatibleVersion if the API version passed in is incorrect
- *
- * @see EOS_LobbyModification_RemoveAttributeOptions
+ * @return EOS_Success if removing this parameter was successful
+ *		   EOS_InvalidParameters if the key is null or empty
+ *         EOS_IncompatibleVersion if the API version passed in is incorrect
  */
 EOS_DECLARE_FUNC(EOS_EResult) EOS_LobbyModification_RemoveAttribute(EOS_HLobbyModification Handle, const EOS_LobbyModification_RemoveAttributeOptions* Options);
 
@@ -766,13 +699,9 @@ EOS_DECLARE_FUNC(EOS_EResult) EOS_LobbyModification_RemoveAttribute(EOS_HLobbyMo
  *
  * @param Options Options to set the attribute and its visibility state
  *
- * @return EOS_EResult containing the result of the operation.
- * Possible result codes:
- * - EOS_Success if setting this parameter was successful
- * - EOS_InvalidParameters if the attribute is missing information or otherwise invalid
- * - EOS_IncompatibleVersion if the API version passed in is incorrect
- *
- * @see EOS_LobbyModification_AddMemberAttributeOptions
+ * @return EOS_Success if setting this parameter was successful
+ *		   EOS_InvalidParameters if the attribute is missing information or otherwise invalid
+ *         EOS_IncompatibleVersion if the API version passed in is incorrect
  */
 EOS_DECLARE_FUNC(EOS_EResult) EOS_LobbyModification_AddMemberAttribute(EOS_HLobbyModification Handle, const EOS_LobbyModification_AddMemberAttributeOptions* Options);
 
@@ -781,13 +710,9 @@ EOS_DECLARE_FUNC(EOS_EResult) EOS_LobbyModification_AddMemberAttribute(EOS_HLobb
  *
  * @param Options Specify the key of the member attribute to remove
  *
- * @return EOS_EResult containing the result of the operation.
- * Possible result codes:
- * - EOS_Success if removing this parameter was successful
- * - EOS_InvalidParameters if the key is null or empty
- * - EOS_IncompatibleVersion if the API version passed in is incorrect
- *
- * @see EOS_LobbyModification_RemoveMemberAttributeOptions
+ * @return EOS_Success if removing this parameter was successful
+ *		   EOS_InvalidParameters if the key is null or empty
+ *         EOS_IncompatibleVersion if the API version passed in is incorrect
  */
 EOS_DECLARE_FUNC(EOS_EResult) EOS_LobbyModification_RemoveMemberAttribute(EOS_HLobbyModification Handle, const EOS_LobbyModification_RemoveMemberAttributeOptions* Options);
 
@@ -796,13 +721,9 @@ EOS_DECLARE_FUNC(EOS_EResult) EOS_LobbyModification_RemoveMemberAttribute(EOS_HL
  *
  * @param Options Options associated with allowed Platform IDs for this lobby
  *
- * @return EOS_EResult containing the result of the operation.
- * Possible result codes:
- * - EOS_Success if setting this parameter was successful
- * - EOS_IncompatibleVersion if the API version passed in is incorrect
- * - EOS_InvalidParameters if the AllowedPlatformIds array is null but the count is 0 or if the count is greater than 0 and the array is null.
- *
- * @see EOS_LobbyModification_SetAllowedPlatformIdsOptions
+ * @return EOS_Success if setting this parameter was successful
+ *         EOS_IncompatibleVersion if the API version passed in is incorrect
+ *         EOS_InvalidParameters if the AllowedPlatformIds array is null but the count is 0 or if the count is greater than 0 and the array is null.
  */
 EOS_DECLARE_FUNC(EOS_EResult) EOS_LobbyModification_SetAllowedPlatformIds(EOS_HLobbyModification Handle, const EOS_LobbyModification_SetAllowedPlatformIdsOptions* Options);
 
@@ -819,8 +740,6 @@ EOS_DECLARE_FUNC(EOS_EResult) EOS_LobbyModification_SetAllowedPlatformIds(EOS_HL
  * @param Options Structure containing the input parameters
  *
  * @return the product user ID for the lobby owner or null if the input parameters are invalid
- *
- * @see EOS_LobbyDetails_GetLobbyOwnerOptions
  */
 EOS_DECLARE_FUNC(EOS_ProductUserId) EOS_LobbyDetails_GetLobbyOwner(EOS_HLobbyDetails Handle, const EOS_LobbyDetails_GetLobbyOwnerOptions* Options);
 
@@ -831,11 +750,9 @@ EOS_DECLARE_FUNC(EOS_ProductUserId) EOS_LobbyDetails_GetLobbyOwner(EOS_HLobbyDet
  * @param Options Structure containing the input parameters
  * @param OutLobbyDetailsInfo Out parameter used to receive the EOS_LobbyDetails_Info structure.
  *
- * @return EOS_EResult containing the result of the operation.
- * Possible result codes:
- * - EOS_Success if the information is available and passed out in OutLobbyDetailsInfo
- * - EOS_InvalidParameters if you pass a null pointer for the out parameter
- * - EOS_IncompatibleVersion if the API version passed in is incorrect
+ * @return EOS_Success if the information is available and passed out in OutLobbyDetailsInfo
+ *         EOS_InvalidParameters if you pass a null pointer for the out parameter
+ *         EOS_IncompatibleVersion if the API version passed in is incorrect
  *
  * @see EOS_LobbyDetails_Info
  * @see EOS_LobbyDetails_CopyInfoOptions
@@ -851,12 +768,10 @@ EOS_DECLARE_FUNC(EOS_EResult) EOS_LobbyDetails_CopyInfo(EOS_HLobbyDetails Handle
  * @param Options Structure containing the input parameters
  * @param OutLobbyDetailsMemberInfo Out parameter used to receive the EOS_LobbyDetails_Info structure.
  *
- * @return EOS_EResult containing the result of the operation.
- * Possible result codes:
- * - EOS_Success if the information is available and passed out in OutLobbyMemberDetailsInfo
- * - EOS_InvalidParameters if you pass a null pointer for the out parameter
- * - EOS_IncompatibleVersion if the API version passed in is incorrect
- * - EOS_NotFound if searching for a target user ID returns no results
+ * @return EOS_Success if the information is available and passed out in OutLobbyMemberDetailsInfo
+ *         EOS_InvalidParameters if you pass a null pointer for the out parameter
+ *         EOS_IncompatibleVersion if the API version passed in is incorrect
+ *         EOS_NotFound if searching for a target user ID returns no results
  *
  * @see EOS_LobbyDetails_MemberInfo
  * @see EOS_LobbyDetails_CopyMemberInfoOptions
@@ -870,8 +785,6 @@ EOS_DECLARE_FUNC(EOS_EResult) EOS_LobbyDetails_CopyMemberInfo(EOS_HLobbyDetails 
  * @param Options the Options associated with retrieving the attribute count
  *
  * @return number of attributes on the lobby or 0 if there is an error
- *
- * @see EOS_LobbyDetails_GetAttributeCountOptions
  */
 EOS_DECLARE_FUNC(uint32_t) EOS_LobbyDetails_GetAttributeCount(EOS_HLobbyDetails Handle, const EOS_LobbyDetails_GetAttributeCountOptions* Options);
 
@@ -882,11 +795,9 @@ EOS_DECLARE_FUNC(uint32_t) EOS_LobbyDetails_GetAttributeCount(EOS_HLobbyDetails 
  * @param Options Structure containing the input parameters
  * @param OutAttribute Out parameter used to receive the EOS_Lobby_Attribute structure.
  *
- * @return EOS_EResult containing the result of the operation.
- * Possible result codes:
- * - EOS_Success if the information is available and passed out in OutAttribute
- * - EOS_InvalidParameters if you pass a null pointer for the out parameter
- * - EOS_IncompatibleVersion if the API version passed in is incorrect
+ * @return EOS_Success if the information is available and passed out in OutAttribute
+ *         EOS_InvalidParameters if you pass a null pointer for the out parameter
+ *         EOS_IncompatibleVersion if the API version passed in is incorrect
  *
  * @see EOS_Lobby_Attribute
  * @see EOS_LobbyDetails_CopyAttributeByIndexOptions
@@ -901,11 +812,9 @@ EOS_DECLARE_FUNC(EOS_EResult) EOS_LobbyDetails_CopyAttributeByIndex(EOS_HLobbyDe
  * @param Options Structure containing the input parameters
  * @param OutAttribute Out parameter used to receive the EOS_Lobby_Attribute structure.
  *
- * @return EOS_EResult containing the result of the operation.
- * Possible result codes:
- * - EOS_Success if the information is available and passed out in OutAttribute
- * - EOS_InvalidParameters if you pass a null pointer for the out parameter
- * - EOS_IncompatibleVersion if the API version passed in is incorrect
+ * @return EOS_Success if the information is available and passed out in OutAttribute
+ *         EOS_InvalidParameters if you pass a null pointer for the out parameter
+ *         EOS_IncompatibleVersion if the API version passed in is incorrect
  *
  * @see EOS_Lobby_Attribute
  * @see EOS_LobbyDetails_CopyAttributeByKeyOptions
@@ -919,8 +828,6 @@ EOS_DECLARE_FUNC(EOS_EResult) EOS_LobbyDetails_CopyAttributeByKey(EOS_HLobbyDeta
  * @param Options the Options associated with retrieving the member count
  *
  * @return number of members in the existing lobby or 0 if there is an error
- *
- * @see EOS_LobbyDetails_GetMemberCountOptions
  */
 EOS_DECLARE_FUNC(uint32_t) EOS_LobbyDetails_GetMemberCount(EOS_HLobbyDetails Handle, const EOS_LobbyDetails_GetMemberCountOptions* Options);
 
@@ -958,11 +865,9 @@ EOS_DECLARE_FUNC(uint32_t) EOS_LobbyDetails_GetMemberAttributeCount(EOS_HLobbyDe
  * @param Options Structure containing the input parameters
  * @param OutAttribute Out parameter used to receive the EOS_Lobby_Attribute structure.
  *
- * @return EOS_EResult containing the result of the operation.
- * Possible result codes:
- * - EOS_Success if the information is available and passed out in OutAttribute
- * - EOS_InvalidParameters if you pass a null pointer for the out parameter
- * - EOS_IncompatibleVersion if the API version passed in is incorrect
+ * @return EOS_Success if the information is available and passed out in OutAttribute
+ *         EOS_InvalidParameters if you pass a null pointer for the out parameter
+ *         EOS_IncompatibleVersion if the API version passed in is incorrect
  *
  * @see EOS_Lobby_Attribute
  * @see EOS_LobbyDetails_CopyMemberAttributeByIndexOptions
@@ -978,11 +883,9 @@ EOS_DECLARE_FUNC(EOS_EResult) EOS_LobbyDetails_CopyMemberAttributeByIndex(EOS_HL
  * @param Options Structure containing the input parameters
  * @param OutAttribute Out parameter used to receive the EOS_Lobby_Attribute structure.
  *
- * @return EOS_EResult containing the result of the operation.
- * Possible result codes:
- * - EOS_Success if the information is available and passed out in OutAttribute
- * - EOS_InvalidParameters if you pass a null pointer for the out parameter
- * - EOS_IncompatibleVersion if the API version passed in is incorrect
+ * @return EOS_Success if the information is available and passed out in OutAttribute
+ *         EOS_InvalidParameters if you pass a null pointer for the out parameter
+ *         EOS_IncompatibleVersion if the API version passed in is incorrect
  *
  * @see EOS_Lobby_Attribute
  * @see EOS_LobbyDetails_CopyMemberAttributeByKeyOptions
@@ -1005,8 +908,9 @@ EOS_DECLARE_FUNC(EOS_EResult) EOS_LobbyDetails_CopyMemberAttributeByKey(EOS_HLob
  * @param ClientData Arbitrary data that is passed back to you in the CompletionDelegate
  * @param CompletionDelegate A callback that is fired when the search operation completes, either successfully or in error
  *
- * @see EOS_LobbySearch_FindOptions
- * @see EOS_LobbySearch_OnFindCallback
+ * @return EOS_Success if the find operation completes successfully
+ *         EOS_NotFound if searching for an individual lobby by lobby ID or target user ID returns no results
+ *         EOS_InvalidParameters if any of the options are incorrect
  */
 EOS_DECLARE_FUNC(void) EOS_LobbySearch_Find(EOS_HLobbySearch Handle, const EOS_LobbySearch_FindOptions* Options, void* ClientData, const EOS_LobbySearch_OnFindCallback CompletionDelegate);
 
@@ -1015,13 +919,9 @@ EOS_DECLARE_FUNC(void) EOS_LobbySearch_Find(EOS_HLobbySearch Handle, const EOS_L
  *
  * @param Options A specific lobby ID for which to search
  *
- * @return EOS_EResult containing the result of the operation.
- * Possible result codes:
- * - EOS_Success if setting this lobby ID was successful
- * - EOS_InvalidParameters if the lobby ID is invalid or null
- * - EOS_IncompatibleVersion if the API version passed in is incorrect
- *
- * @see EOS_LobbySearch_SetLobbyIdOptions
+ * @return EOS_Success if setting this lobby ID was successful
+ *         EOS_InvalidParameters if the lobby ID is invalid or null
+ *         EOS_IncompatibleVersion if the API version passed in is incorrect
  */
 EOS_DECLARE_FUNC(EOS_EResult) EOS_LobbySearch_SetLobbyId(EOS_HLobbySearch Handle, const EOS_LobbySearch_SetLobbyIdOptions* Options);
 
@@ -1031,13 +931,9 @@ EOS_DECLARE_FUNC(EOS_EResult) EOS_LobbySearch_SetLobbyId(EOS_HLobbySearch Handle
  *
  * @param Options a specific target user ID to find
  *
- * @return EOS_EResult containing the result of the operation.
- * Possible result codes:
- * - EOS_Success if setting this target user ID was successful
- * - EOS_InvalidParameters if the target user ID is invalid or null
- * - EOS_IncompatibleVersion if the API version passed in is incorrect
- *
- * @see EOS_LobbySearch_SetTargetUserIdOptions
+ * @return EOS_Success if setting this target user ID was successful
+ *         EOS_InvalidParameters if the target user ID is invalid or null
+ *         EOS_IncompatibleVersion if the API version passed in is incorrect
  */
 EOS_DECLARE_FUNC(EOS_EResult) EOS_LobbySearch_SetTargetUserId(EOS_HLobbySearch Handle, const EOS_LobbySearch_SetTargetUserIdOptions* Options);
 
@@ -1046,13 +942,10 @@ EOS_DECLARE_FUNC(EOS_EResult) EOS_LobbySearch_SetTargetUserId(EOS_HLobbySearch H
  *
  * @param Options a search parameter and its comparison op
  *
- * @return EOS_EResult containing the result of the operation.
- * Possible result codes:
- * - EOS_Success if setting this search parameter was successful
- * - EOS_InvalidParameters if the search criteria is invalid or null
- * - EOS_IncompatibleVersion if the API version passed in is incorrect
+ * @return EOS_Success if setting this search parameter was successful
+ *         EOS_InvalidParameters if the search criteria is invalid or null
+ *         EOS_IncompatibleVersion if the API version passed in is incorrect
  *
- * @see EOS_LobbySearch_SetParameterOptions
  * @see EOS_Lobby_AttributeData
  * @see EOS_EComparisonOp
  */
@@ -1063,14 +956,10 @@ EOS_DECLARE_FUNC(EOS_EResult) EOS_LobbySearch_SetParameter(EOS_HLobbySearch Hand
  *
  * @params Options a search parameter key name to remove
  *
- * @return EOS_EResult containing the result of the operation.
- * Possible result codes:
- * - EOS_Success if removing this search parameter was successful
- * - EOS_InvalidParameters if the search key is invalid or null
- * - EOS_NotFound if the parameter was not a part of the search criteria
- * - EOS_IncompatibleVersion if the API version passed in is incorrect
- *
- * @see EOS_LobbySearch_RemoveParameterOptions
+ * @return EOS_Success if removing this search parameter was successful
+ *         EOS_InvalidParameters if the search key is invalid or null
+ *		   EOS_NotFound if the parameter was not a part of the search criteria
+ *         EOS_IncompatibleVersion if the API version passed in is incorrect
  */
 EOS_DECLARE_FUNC(EOS_EResult) EOS_LobbySearch_RemoveParameter(EOS_HLobbySearch Handle, const EOS_LobbySearch_RemoveParameterOptions* Options);
 
@@ -1079,13 +968,9 @@ EOS_DECLARE_FUNC(EOS_EResult) EOS_LobbySearch_RemoveParameter(EOS_HLobbySearch H
  *
  * @param Options maximum number of search results to return in the query
  *
- * @return EOS_EResult containing the result of the operation.
- * Possible result codes:
- * - EOS_Success if setting the max results was successful
- * - EOS_InvalidParameters if the number of results requested is invalid
- * - EOS_IncompatibleVersion if the API version passed in is incorrect
- *
- * @see EOS_LobbySearch_SetMaxResultsOptions
+ * @return EOS_Success if setting the max results was successful
+ *         EOS_InvalidParameters if the number of results requested is invalid
+ *         EOS_IncompatibleVersion if the API version passed in is incorrect
  */
 EOS_DECLARE_FUNC(EOS_EResult) EOS_LobbySearch_SetMaxResults(EOS_HLobbySearch Handle, const EOS_LobbySearch_SetMaxResultsOptions* Options);
 
@@ -1095,8 +980,6 @@ EOS_DECLARE_FUNC(EOS_EResult) EOS_LobbySearch_SetMaxResults(EOS_HLobbySearch Han
  * @param Options Options associated with the search count
  *
  * @return return the number of search results found by the query or 0 if search is not complete
- *
- * @see EOS_LobbySearch_GetSearchResultCountOptions
  */
 EOS_DECLARE_FUNC(uint32_t) EOS_LobbySearch_GetSearchResultCount(EOS_HLobbySearch Handle, const EOS_LobbySearch_GetSearchResultCountOptions* Options);
 
@@ -1107,14 +990,11 @@ EOS_DECLARE_FUNC(uint32_t) EOS_LobbySearch_GetSearchResultCount(EOS_HLobbySearch
  * @param Options Structure containing the input parameters
  * @param OutLobbyDetailsHandle out parameter used to receive the lobby details handle
  *
- * @return EOS_EResult containing the result of the operation.
- * Possible result codes:
- * - EOS_Success if the information is available and passed out in OutLobbyDetailsHandle
- * - EOS_InvalidParameters if you pass an invalid index or a null pointer for the out parameter
- * - EOS_IncompatibleVersion if the API version passed in is incorrect
+ * @return EOS_Success if the information is available and passed out in OutLobbyDetailsHandle
+ *         EOS_InvalidParameters if you pass an invalid index or a null pointer for the out parameter
+ *         EOS_IncompatibleVersion if the API version passed in is incorrect
  *
  * @see EOS_LobbySearch_CopySearchResultByIndexOptions
- * @see EOS_HLobbyDetails
  * @see EOS_LobbyDetails_Release
  */
 EOS_DECLARE_FUNC(EOS_EResult) EOS_LobbySearch_CopySearchResultByIndex(EOS_HLobbySearch Handle, const EOS_LobbySearch_CopySearchResultByIndexOptions* Options, EOS_HLobbyDetails* OutLobbyDetailsHandle);
