@@ -33,7 +33,6 @@ if (NOT DEFINED EOS_ENABLED)
 	if (EOS)
 		set (EOS_ENABLED 1)
 	endif()
-    # FIX: Se asigna "1" en lugar de "" para pasar las validaciones de FATAL_ERROR
 	set(BUILD_ENV_PR "1" CACHE STRING "EOS product id")
 	set(BUILD_ENV_SA "1" CACHE STRING "EOS sandbox")
 	set(BUILD_ENV_DE "1" CACHE STRING "EOS deployment")
@@ -96,9 +95,6 @@ if (PLAYFAB_ENABLED AND NOT CURL_ENABLED)
 	message(FATAL_ERROR "CURL must be enabled if PlayFab is enabled.")
 endif()
 
-# EOS & PlayFab Tokens
-# Los bloques de validación abajo ahora pasarán porque las variables tienen "1"
-
 if (DEFINED ENV{BUILD_ENV_PR} AND NOT DEFINED BUILD_ENV_PR)
 	set (BUILD_ENV_PR $ENV{BUILD_ENV_PR})
 endif()
@@ -141,4 +137,76 @@ if (EOS_ENABLED AND "${BUILD_ENV_GSE}" STREQUAL "")
 	message(FATAL_ERROR "BUILD_ENV_GSE must be specified if EOS is enabled.")
 endif()
 
-# ... Resto del archivo se mantiene igual ...
+if (DEFINED ENV{BUILD_ENV_PFTID} AND NOT DEFINED BUILD_ENV_PFTID)
+	set (BUILD_ENV_PFTID $ENV{BUILD_ENV_PFTID})
+endif()
+if (PLAYFAB_ENABLED AND "${BUILD_ENV_PFTID}" STREQUAL "")
+	message(FATAL_ERROR "BUILD_ENV_PFTID must be specified if PlayFab is enabled.")
+endif()
+
+if (DEFINED ENV{BUILD_ENV_PFHID} AND NOT DEFINED BUILD_ENV_PFHID)
+	set (BUILD_ENV_PFHID $ENV{BUILD_ENV_PFHID})
+endif()
+if (PLAYFAB_ENABLED AND "${BUILD_ENV_PFHID}" STREQUAL "")
+	message(FATAL_ERROR "BUILD_ENV_PFHID must be specified if PlayFab is enabled.")
+endif()
+
+if (DEFINED ENV{EDITOR_ENABLED})
+	set (EDITOR_ENABLED $ENV{EDITOR_ENABLED})
+else()
+	set (EDITOR_ENABLED 0)
+endif()
+
+if (DEFINED ENV{GAME_ENABLED})
+	set (GAME_ENABLED $ENV{GAME_ENABLED})
+else()
+	set (GAME_ENABLED 1)
+endif()
+
+set(FMOD_ENABLED OFF)
+set(OPENAL_ENABLED ON)
+
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
+set(CMAKE_OSX_ARCHITECTURES x86_64)
+
+if (EOS_ENABLED)
+	message("Building with EOS")
+endif()
+
+set (Windows 1)
+cmake_policy(SET CMP0072 NEW)
+
+find_package(OpenGL REQUIRED)
+find_package(SDL2 REQUIRED)
+find_package(SDL2_image REQUIRED)
+find_package(SDL2_net REQUIRED)
+find_package(SDL2_ttf REQUIRED)
+find_package(PhysFS REQUIRED)
+find_package(RapidJson REQUIRED)
+include_directories(${RAPID_JSON_INCLUDE_DIR})
+
+include_directories(${SDL2_INCLUDE_DIRS} ${PHYSFS_INCLUDE_DIR})
+find_package(OpenAL REQUIRED)
+find_package(OGGVORBIS REQUIRED)
+include_directories(${OPENAL_INCLUDE_DIR} ${OGG_INCLUDE_DIR} ${VORBIS_INCLUDE_DIR})
+
+set(IMGUI 1)
+find_package(Threads REQUIRED)
+find_package(PNG REQUIRED)
+include_directories(${PNG_INCLUDE_DIR})
+
+if(EOS_ENABLED)
+  find_package(EOS REQUIRED)
+  include_directories(${EOS_INCLUDE_DIR})
+endif()
+
+configure_file ( "${PROJECT_SOURCE_DIR}/src/Config.hpp.in" "${PROJECT_SOURCE_DIR}/src/Config.hpp")
+add_subdirectory(src)
+
+if (GAME_ENABLED)
+	add_executable(barony ${GAME_SOURCES} "${CMAKE_CURRENT_SOURCE_DIR}/barony.rc")
+	target_link_libraries(barony ${SDL2_LIBRARIES} ${SDL2_IMAGE_LIBRARIES} ${SDL2_NET_LIBRARIES} ${SDL2_TTF_LIBRARIES} ${OPENAL_LIBRARY} ${VORBISFILE_LIBRARY} ${OGG_LIBRARY} ${PHYSFS_LIBRARY} ${PNG_LIBRARY} ${OPENGL_LIBRARIES} ${THREADS_LIBRARIES} wsock32 ws2_32)
+	if (EOS_ENABLED)
+		target_link_libraries(barony ${EOS_LIBRARIES})
+	endif()
+endif()
