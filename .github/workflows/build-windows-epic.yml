@@ -1,4 +1,4 @@
-name: Build Barony 15p (Epic Games x64 AUDITED FINAL)
+name: Build Barony 15p (Epic Games x64 AUDITED FINAL V4)
 on: [push, workflow_dispatch]
 
 jobs:
@@ -22,32 +22,37 @@ jobs:
       - name: Install dependencies (vcpkg x64)
         run: vcpkg install ${{ env.VCPKG_PACKAGES }} --triplet x64-windows
 
-      - name: Surgical Patching (Audited Configuration)
+      - name: Surgical Patching (Fixed Placeholder Mapping)
         shell: pwsh
         run: |
           $vcpkgRoot = $env:VCPKG_INSTALLATION_ROOT.Replace('\', '/')
           $vcpkgLib = "$vcpkgRoot/installed/x64-windows/lib"
           $vcpkgInclude = "$vcpkgRoot/installed/x64-windows/include"
           
-          # Localización del SDK de Epic
           $eosLibFile = Get-ChildItem -Path "deps" -Filter "EOSSDK-Win64-Shipping.lib" -Recurse | Select-Object -First 1
           if (-not $eosLibFile) { Write-Error "EOSSDK-Win64-Shipping.lib no encontrado."; exit 1 }
           $eosLibPath = $eosLibFile.FullName.Replace('\', '/')
           $eosInclude = "$pwd/deps/eos/include".Replace('\', '/')
           
-          $cmakePath = "CMakeLists.txt"
+          # IDS OFICIALES
+          $eP = "38276f7f6f4d4127929424c803027b40"
+          $eS = "899732f74136450992383842c1630132"
+          $eD = "39f3796d19ca447285ec43764835848e"
+          $eC = "xyza78912q6mHnd5O1TjL2H9YmD83W4v"
           
-          # RECONSTRUCCIÓN TOTAL DEL CMAKE PARA EVITAR HUECOS
+          # RECONSTRUCCIÓN DEL CMAKELists.txt (Escapando variables de CMake adecuadamente)
           $newCMake = @"
           cmake_minimum_required(VERSION 3.10)
           project(barony)
           set(CMAKE_CXX_STANDARD 17)
+          
+          # RUTAS DE INCLUDES (Corregido para SDL.h)
           include_directories("$vcpkgInclude")
           include_directories("$vcpkgInclude/SDL2")
           include_directories("$eosInclude")
           include_directories("src")
 
-          # SETEO DE TODAS LAS VARIABLES PARA CONFIG.HPP.IN
+          # DEFINICIÓN MANUAL DE PLACEHOLDERS PARA EVITAR ERROR C1017
           set(Windows 1)
           set(Apple 0)
           set(Linux 0)
@@ -65,47 +70,36 @@ jobs:
           set(TREMOR 0)
           set(PANDORA 0)
           set(NOT_DWORD_DEFINED 0)
-          
-          # IDS DE EPIC HARDCODED
-          set(BUILD_ENV_PR "38276f7f6f4d4127929424c803027b40")
-          set(BUILD_ENV_SA "899732f74136450992383842c1630132")
-          set(BUILD_ENV_DE "39f3796d19ca447285ec43764835848e")
-          set(BUILD_ENV_CC "xyza78912q6mHnd5O1TjL2H9YmD83W4v")
+          set(BUILD_ENV_PR "$eP")
+          set(BUILD_ENV_SA "$eS")
+          set(BUILD_ENV_DE "$eD")
+          set(BUILD_ENV_CC "$eC")
           set(BUILD_ENV_CS "1")
           set(BUILD_ENV_GSE "1")
 
           add_definitions(-DNOMINMAX -D_CRT_SECURE_NO_WARNINGS -DWIN64 -DEGP -DUSE_EOS=1 -DEOS_ENABLED=1 -D__STDC_FORMAT_MACROS)
           
-          # GENERACIÓN DEL HEADER CRÍTICO
           configure_file("src/Config.hpp.in" "src/Config.hpp")
           
+          # PROCESAMOS SUBDIRECTORIOS PARA LLENAR GAME_SOURCES
           add_subdirectory(src)
-          add_executable(barony \${GAME_SOURCES})
+          
+          # DEFINIMOS EL EJECUTABLE (Usamos backtick para que PS no interprete la variable)
+          add_executable(barony \`${GAME_SOURCES} "barony.rc")
+          
           target_link_libraries(barony "$eosLibPath" "$vcpkgLib/physfs.lib" "$vcpkgLib/SDL2.lib" "$vcpkgLib/SDL2_image.lib" "$vcpkgLib/SDL2_net.lib" "$vcpkgLib/SDL2_ttf.lib" "$vcpkgLib/jsoncpp.lib" "$vcpkgLib/glew32.lib" Opengl32.lib Glu32.lib Advapi32.lib User32.lib Gdi32.lib Shell32.lib Ole32.lib Ws2_32.lib Crypt32.lib)
           "@
           
           $newCMake | Set-Content $cmakePath
 
-          # PARCHES DE CÓDIGO (libpng, lambdas, status)
-          if (Test-Path "src/savepng.cpp") {
-              $pngTxt = [IO.File]::ReadAllText("src/savepng.cpp")
-              $pngTxt = $pngTxt -replace 'png_set_rows\(png_ptr, info_ptr, row_pointers\)', 'png_set_rows(png_ptr, info_ptr, (png_bytepp)row_pointers)'
-              [IO.File]::WriteAllText("src/savepng.cpp", $pngTxt)
-          }
-          $filesToFix = @("src/net.cpp", "src/ui/MainMenu.cpp")
+          # Fix de lambdas y libpng
+          $filesToFix = @("src/net.cpp", "src/ui/MainMenu.cpp", "src/savepng.cpp")
           foreach ($f in $filesToFix) {
               if (Test-Path $f) {
                   $txt = [IO.File]::ReadAllText($f)
+                  $txt = $txt -replace 'png_set_rows\(png_ptr, info_ptr, row_pointers\)', 'png_set_rows(png_ptr, info_ptr, (png_bytepp)row_pointers)'
                   $txt = $txt -replace '\[=\s*\]\s*\(', '[=, this]('
                   [IO.File]::WriteAllText($f, $txt)
-              }
-          }
-          # Corregimos la estructura StatusEffectQueue_t en los headers
-          Get-ChildItem -Path "src" -Filter "*.hpp" -Recurse | ForEach-Object {
-              $txt = [IO.File]::ReadAllText($_.FullName)
-              if ($txt -match "struct\s+StatusEffectQueue_t") {
-                  $txt = $txt -replace "(struct\s+StatusEffectQueue_t\s*\{)", "`$1 StatusEffectQueue_t() = default;"
-                  [IO.File]::WriteAllText($_.FullName, $txt)
               }
           }
 
