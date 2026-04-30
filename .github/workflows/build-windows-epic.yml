@@ -6,19 +6,24 @@ jobs:
     runs-on: windows-latest
     env:
       VCPKG_PACKAGES: 'sdl2 sdl2-image sdl2-net sdl2-ttf openal-soft libogg libvorbis zlib libpng physfs jsoncpp rapidjson dirent glew'
-      VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
 
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # IMPORTANTE: debe ir ANTES de instalar vcpkg para que el cache funcione
-      - name: Export GitHub Actions Cache Env
-        uses: actions/github-script@v7
-        with:
-          script: |
-            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
-            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+      - name: Setup NuGet cache for vcpkg
+        shell: pwsh
+        run: |
+          $nuget = (& C:/vcpkg/vcpkg.exe fetch nuget) | Select-Object -Last 1
+          & $nuget sources add `
+            -Name "GitHubActionsCache" `
+            -Source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" `
+            -Username "${{ github.actor }}" `
+            -Password "${{ secrets.GITHUB_TOKEN }}" `
+            -StorePasswordInClearText
+          & $nuget setapikey "${{ secrets.GITHUB_TOKEN }}" `
+            -Source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json"
+          echo "VCPKG_BINARY_SOURCES=clear;nuget,GitHubActionsCache,readwrite" >> $env:GITHUB_ENV
 
       - name: Install dependencies (vcpkg x64)
         run: vcpkg install ${{ env.VCPKG_PACKAGES }} --triplet x64-windows
