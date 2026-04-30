@@ -18,13 +18,15 @@ set(OPUS_ENABLED 0)
 set(EDITOR_ENABLED 0)
 set(GAME_ENABLED 1)
 
-# IDs de Epic Games Store
-set(BUILD_ENV_PR "38276f7f6f4d4127929424c803027b40" CACHE STRING "Product ID")
-set(BUILD_ENV_SA "899732f74136450992383842c1630132" CACHE STRING "Sandbox ID")
-set(BUILD_ENV_DE "39f3796d19ca447285ec43764835848e" CACHE STRING "Deployment ID")
-set(BUILD_ENV_CC "xyza78912q6mHnd5O1TjL2H9YmD83W4v" CACHE STRING "Client ID")
-set(BUILD_ENV_CS "1" CACHE STRING "Bypass")
+# IDs de Epic Games Store — inyectados por el workflow via -D (no hardcodear aqui)
+set(BUILD_ENV_PR "" CACHE STRING "Product ID")
+set(BUILD_ENV_SA "" CACHE STRING "Sandbox ID")
+set(BUILD_ENV_DE "" CACHE STRING "Deployment ID")
+set(BUILD_ENV_CC "" CACHE STRING "Client ID")
+set(BUILD_ENV_CS "" CACHE STRING "Client Secret")
 set(BUILD_ENV_GSE "1" CACHE STRING "Bypass")
+set(BUILD_ENV_PFTID "1" CACHE STRING "Bypass")
+set(BUILD_ENV_PFHID "1" CACHE STRING "Bypass")
 
 # Flags Globales
 set(USE_EOS 1)

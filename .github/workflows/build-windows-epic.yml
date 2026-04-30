@@ -1,4 +1,4 @@
-name: Build Barony 15p (ULTRA STABLE FINAL)
+name: Build Barony 15p (EPIC)
 on: [push, workflow_dispatch]
 
 jobs:
@@ -22,78 +22,9 @@ jobs:
       - name: Install dependencies (vcpkg x64)
         run: vcpkg install ${{ env.VCPKG_PACKAGES }} --triplet x64-windows
 
-      - name: Surgical Patching (Total Placeholder Mapping)
+      - name: Apply source patches
         shell: pwsh
         run: |
-          $vcpRoot = $env:VCPKG_INSTALLATION_ROOT.Replace('\', '/')
-          $vcpInc = "$vcpRoot/installed/x64-windows/include"
-          $vcpLib = "$vcpRoot/installed/x64-windows/lib"
-          
-          $eosLibFile = Get-ChildItem -Path "deps" -Filter "EOSSDK-Win64-Shipping.lib" -Recurse | Select-Object -First 1
-          if (-not $eosLibFile) { Write-Error "EOSSDK-Win64-Shipping.lib no encontrado."; exit 1 }
-          $eosLibPath = $eosLibFile.FullName.Replace('\', '/')
-          $eosInclude = "$pwd/deps/eos/include".Replace('\', '/')
-          
-          # IDs de Epic (Mantenemos tus credenciales)
-          $eP = "38276f7f6f4d4127929424c803027b40"
-          $eS = "899732f74136450992383842c1630132"
-          $eD = "39f3796d19ca447285ec43764835848e"
-          $eC = "xyza78912q6mHnd5O1TjL2H9YmD83W4v"
-
-          # RECONSTRUCCIÓN LITERAL DEL CMAKE (Se usa `$ para proteger variables de CMake)
-          $newCMake = @"
-          cmake_minimum_required(VERSION 3.10)
-          project(barony)
-          set(CMAKE_CXX_STANDARD 17)
-          
-          include_directories("$vcpInc")
-          include_directories("$vcpInc/SDL2")
-          include_directories("$eosInclude")
-          include_directories("src")
-
-          # MAPEADO DE LOS 25 PLACEHOLDERS DE CONFIG.HPP.IN (Evita Error C1017)
-          set(Windows 1)
-          set(Apple 0)
-          set(Linux 0)
-          set(Bsd 0)
-          set(Haiku 0)
-          set(STEAMWORKS_ENABLED 0)
-          set(EOS_ENABLED 1)
-          set(PLAYFAB_ENABLED 0)
-          set(IMGUI 1)
-          set(CURL_ENABLED 0)
-          set(THEORAPLAYER_ENABLED 0)
-          set(OPUS_ENABLED 0)
-          set(FMOD 0)
-          set(OPENAL 1)
-          set(TREMOR 0)
-          set(PANDORA 0)
-          set(NOT_DWORD_DEFINED 0)
-          set(BUILD_ENV_PR "$eP")
-          set(BUILD_ENV_SA "$eS")
-          set(BUILD_ENV_DE "$eD")
-          set(BUILD_ENV_CC "$eC")
-          set(BUILD_ENV_CS "1")
-          set(BUILD_ENV_GSE "1")
-          set(BUILD_ENV_PFTID "1")
-          set(BUILD_ENV_PFHID "1")
-
-          add_definitions(-DNOMINMAX -D_CRT_SECURE_NO_WARNINGS -DWIN64 -DEGP -DUSE_EOS=1 -DEOS_ENABLED=1 -D__STDC_FORMAT_MACROS)
-          
-          configure_file("src/Config.hpp.in" "src/Config.hpp")
-          
-          add_subdirectory(src)
-          
-          # Barony.rc incluido para recursos de Windows
-          add_executable(barony \`$${GAME_SOURCES} "barony.rc")
-          
-          target_link_libraries(barony "$eosLibPath" "$vcpLib/physfs.lib" "$vcpLib/SDL2.lib" "$vcpLib/SDL2_image.lib" "$vcpLib/SDL2_net.lib" "$vcpLib/SDL2_ttf.lib" "$vcpLib/jsoncpp.lib" "$vcpLib/glew32.lib" Opengl32.lib Glu32.lib Advapi32.lib User32.lib Gdi32.lib Shell32.lib Ole32.lib Ws2_32.lib Crypt32.lib)
-          "@
-          
-          # Escritura directa sin variables de ruta para evitar el error "null"
-          Set-Content -Path "CMakeLists.txt" -Value $newCMake
-
-          # Fix de lambdas y punteros x64
           $files = @("src/net.cpp", "src/ui/MainMenu.cpp", "src/savepng.cpp")
           foreach ($f in $files) {
               if (Test-Path $f) {
@@ -105,23 +36,33 @@ jobs:
           }
 
       - name: Configure CMake
-        run: cmake -B build -A x64 -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" -DVCPKG_TARGET_TRIPLET=x64-windows -DCMAKE_BUILD_TYPE=Release
+        run: |
+          cmake -B build -A x64 `
+            -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" `
+            -DVCPKG_TARGET_TRIPLET=x64-windows `
+            -DCMAKE_BUILD_TYPE=Release `
+            -DBUILD_ENV_PR="${{ secrets.BUILD_ENV_PR }}" `
+            -DBUILD_ENV_SA="${{ secrets.BUILD_ENV_SA }}" `
+            -DBUILD_ENV_DE="${{ secrets.BUILD_ENV_DE }}" `
+            -DBUILD_ENV_CC="${{ secrets.BUILD_ENV_CC }}" `
+            -DBUILD_ENV_CS="${{ secrets.BUILD_ENV_CS }}"
 
       - name: Build Project
         run: cmake --build build --config Release --target barony
 
-      - name: Collect Artifacts
+      - name: Collect DLLs
         shell: pwsh
         run: |
           $binDir = "$env:VCPKG_INSTALLATION_ROOT/installed/x64-windows/bin"
           $outDir = "build/Release"
           if (Test-Path $outDir) {
             Copy-Item "$binDir/*.dll" -Destination $outDir -Force
-            Get-ChildItem -Path "." -Filter "EOSSDK-Win64-Shipping.dll" -Recurse | Copy-Item -Destination $outDir -Force
+            Get-ChildItem -Path "." -Filter "EOSSDK-Win64-Shipping.dll" -Recurse |
+              Copy-Item -Destination $outDir -Force
           }
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: barony-15p-x64-FINAL
+          name: barony-15p-x64-epic
           path: build/Release/
