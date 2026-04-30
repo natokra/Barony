@@ -8,13 +8,30 @@ if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif()
 
-# --- DEFINICIÓN DE MACROS PARA CONFIG.HPP (Evita Error C1017) ---
+# --- DEFINICIÓN DE VARIABLES PARA CONFIG.HPP.IN (todas requeridas, evita Error C1017) ---
+
+# Plataforma
+set(Windows 1)
+set(Apple 0)
+set(Linux 0)
+set(Bsd 0)
+set(Haiku 0)
+
+# Features
 set(STEAMWORKS_ENABLED 0)
 set(EOS_ENABLED 1)
 set(PLAYFAB_ENABLED 0)
 set(THEORAPLAYER_ENABLED 0)
 set(CURL_ENABLED 0)
 set(OPUS_ENABLED 0)
+set(IMGUI 1)
+set(FMOD 0)
+set(OPENAL 1)
+set(TREMOR 0)
+set(PANDORA 0)
+set(NOT_DWORD_DEFINED 0)
+
+# Build internos
 set(EDITOR_ENABLED 0)
 set(GAME_ENABLED 1)
 
@@ -53,6 +70,8 @@ find_package(JSONCPP REQUIRED)
 # Inclusión de Headers
 include_directories("deps/eos/include")
 include_directories("src")
+# Fix para imgui que busca SDL.h en vez de SDL2/SDL.h
+include_directories("${_VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/include/SDL2")
 
 # Generación de Config.hpp
 configure_file("${PROJECT_SOURCE_DIR}/src/Config.hpp.in" "${PROJECT_SOURCE_DIR}/src/Config.hpp")
